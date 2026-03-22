@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Playfair Display", serif;
+  
+  --color-zenith-bg: var(--theme-bg, #F1F3F5);
+  --color-zenith-card: var(--theme-card, #FFFFFF);
+  --color-zenith-accent: var(--theme-accent, #007AFF);
+  --color-zenith-border: var(--theme-border, #E2E8F0);
+}
+
+@layer base {
+  :root {
+    --theme-bg: #F1F3F5;
+    --theme-card: #FFFFFF;
+    --theme-accent: #007AFF;
+    --theme-border: #E2E8F0;
+  }
+  
+  .dark {
+    --theme-bg: #0f172a;
+    --theme-card: #1e293b;
+    --theme-accent: #3b82f6;
+    --theme-border: #334155;
+  }
+
+  body {
+    @apply bg-zenith-bg text-slate-700 dark:text-slate-300 font-sans antialiased font-normal transition-colors duration-300;
+  }
+  
+  h1, h2, h3 {
+    @apply font-sans font-semibold tracking-tight text-slate-900 dark:text-white;
+  }
+}
+
+.glass-panel {
+  @apply bg-zenith-card border border-zenith-border rounded-[2rem] transition-all duration-500 shadow-sm hover:shadow-md;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Scrollbar Hide Utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.zenith-gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-br from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-300 dark:to-slate-500;
+}
+
+.nav-item-active {
+  @apply bg-slate-900 dark:bg-slate-800 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)];
+}
+
+.luxury-line {
+  @apply h-px w-full bg-gradient-to-r from-transparent via-zenith-border to-transparent;
+}
