@@ -1,4 +1,5 @@
 export interface ProductData {
+  id: string;
   name: string;
   coreValue: string;
   usp?: string;
@@ -34,7 +35,8 @@ export interface SimulationResult {
 }
 
 export interface AppState {
-  currentProject: ProductData | null;
+  projects: ProductData[];
+  currentProjectId: string;
   simulations: SimulationResult[];
   activeModule: 'input' | 'gtm' | 'advisor' | 'sandbox' | 'monitoring' | 'diagnostics' | 'generator';
   activeSubModule?: string;

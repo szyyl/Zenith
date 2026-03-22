@@ -13,22 +13,17 @@ import {
   FileOutput, 
   ChevronRight,
   ChevronDown,
-  Search,
   Settings,
   Plus,
   Zap,
-  Cpu,
   LineChart,
   Target,
-  TrendingUp,
-  History,
   AlertTriangle,
   CheckCircle2,
-  XCircle,
   Users,
   Link as LinkIcon,
-  Copy,
-  ArrowRight
+  ArrowRight,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppState, ProductData, SimulationResult } from './types';
@@ -56,6 +51,7 @@ import {
 
 // Mock data for initial state
 const INITIAL_PROJECT: ProductData = {
+  id: "default-1",
   name: "产品巅峰 (Zenith Alpha)",
   coreValue: "通过多模型 AI 编排，使高端产品策略大众化。",
   usp: "多模型协同的动态沙盘推演引擎",
@@ -111,12 +107,22 @@ const ScoreDetail = ({ label, score, desc }: { label: string, score: number, des
 
 export default function App() {
   const [state, setState] = useState<AppState>({
-    currentProject: INITIAL_PROJECT,
+    projects: [INITIAL_PROJECT],
+    currentProjectId: 'default-1',
     simulations: [],
     activeModule: 'sandbox',
     activeSubModule: 'sandbox-engine',
     isSimulating: false,
   });
+
+  const currentProject = state.projects.find(p => p.id === state.currentProjectId) || state.projects[0];
+
+  const updateCurrentProject = (updates: Partial<ProductData>) => {
+    setState(s => ({
+      ...s,
+      projects: s.projects.map(p => p.id === s.currentProjectId ? { ...p, ...updates } : p)
+    }));
+  };
 
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(['sandbox']));
 
@@ -128,13 +134,7 @@ export default function App() {
     setUploadState('uploading');
     try {
       const data = await analyzeAssetFromLink(linkInput);
-      setState(s => ({
-        ...s,
-        currentProject: {
-          ...s.currentProject!,
-          ...data
-        }
-      }));
+      updateCurrentProject(data);
       setUploadState('success');
       setLinkInput('');
     } catch (error) {
@@ -158,13 +158,7 @@ export default function App() {
       setUploadState('uploading');
       try {
         const data = await analyzeAssetFromFile(file);
-        setState(s => ({
-          ...s,
-          currentProject: {
-            ...s.currentProject!,
-            ...data
-          }
-        }));
+        updateCurrentProject(data);
         setUploadState('success');
       } catch (error) {
         console.error("File analysis failed:", error);
@@ -223,29 +217,16 @@ export default function App() {
 
   useEffect(() => {
     if (state.activeSubModule) {
-      const element = document.getElementById(state.activeSubModule);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      setTimeout(() => {
+        const element = document.getElementById(state.activeSubModule!);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
     }
-  }, [state.activeSubModule]);
+  }, [state.activeSubModule, state.activeModule]);
 
-  const [isSpotlightOpen, setIsSpotlightOpen] = useState(false);
   const [modelMode, setModelMode] = useState<ModelMode>('fast');
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSpotlightOpen(true);
-      }
-      if (e.key === 'Escape') {
-        setIsSpotlightOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
   const [advisorChat, setAdvisorChat] = useState<{role: string, content: string}[]>([]);
   const [chatInput, setChatInput] = useState("");
 
@@ -262,7 +243,7 @@ export default function App() {
 
   const runSimulation = async (scenario: string) => {
     setState(prev => ({ ...prev, isSimulating: true }));
-    const resultText = await runSandboxSimulation(scenario, state.currentProject);
+    const resultText = await runSandboxSimulation(scenario, currentProject);
     
     const newSim: SimulationResult = {
       id: Math.random().toString(36).substr(2, 9),
@@ -312,7 +293,7 @@ export default function App() {
               { id: 'input-persona', label: '用户画像' }
             ]}
             activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeSubModule: id}))}
+            onSubClick={(id) => setState(s => ({...s, activeModule: 'input', activeSubModule: id}))}
           />
           <SidebarItem 
             icon={<Target size={18} />} 
@@ -328,7 +309,7 @@ export default function App() {
               { id: 'gtm-insights', label: 'AI 洞察' }
             ]}
             activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeSubModule: id}))}
+            onSubClick={(id) => setState(s => ({...s, activeModule: 'gtm', activeSubModule: id}))}
           />
           <SidebarItem 
             icon={<ShieldAlert size={18} />} 
@@ -343,7 +324,7 @@ export default function App() {
               { id: 'sandbox-history', label: '推演历史' }
             ]}
             activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeSubModule: id}))}
+            onSubClick={(id) => setState(s => ({...s, activeModule: 'sandbox', activeSubModule: id}))}
           />
           <SidebarItem 
             icon={<Activity size={18} />} 
@@ -358,7 +339,7 @@ export default function App() {
               { id: 'diagnostics-breakdown', label: '评分透明化' }
             ]}
             activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeSubModule: id}))}
+            onSubClick={(id) => setState(s => ({...s, activeModule: 'diagnostics', activeSubModule: id}))}
           />
           <SidebarItem 
             icon={<LineChart size={18} />} 
@@ -373,7 +354,7 @@ export default function App() {
               { id: 'monitoring-backtest', label: '预测回测' }
             ]}
             activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeSubModule: id}))}
+            onSubClick={(id) => setState(s => ({...s, activeModule: 'monitoring', activeSubModule: id}))}
           />
           <SidebarItem 
             icon={<FileOutput size={18} />} 
@@ -388,7 +369,7 @@ export default function App() {
               { id: 'generator-marketing', label: '营销素材' }
             ]}
             activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeSubModule: id}))}
+            onSubClick={(id) => setState(s => ({...s, activeModule: 'generator', activeSubModule: id}))}
           />
           <SidebarItem 
             icon={<BrainCircuit size={18} />} 
@@ -403,7 +384,7 @@ export default function App() {
               { id: 'advisor-history', label: '历史推演' }
             ]}
             activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeSubModule: id}))}
+            onSubClick={(id) => setState(s => ({...s, activeModule: 'advisor', activeSubModule: id}))}
           />
         </nav>
 
@@ -422,16 +403,36 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         {/* Header */}
-        <header className="h-24 flex items-center justify-between px-12 bg-white sticky top-0 z-10 border-b border-slate-100">
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200 group focus-within:border-slate-300 transition-all">
-              <Search size={16} className="text-slate-400 group-focus-within:text-zenith-accent transition-colors" />
-              <input 
-                type="text" 
-                placeholder="搜索模拟... (Cmd+K)" 
-                className="bg-transparent border-none outline-none text-sm w-64 font-light placeholder:text-slate-400 text-slate-900"
-              />
-            </div>
+        <header className="h-24 flex items-center justify-between pl-6 pr-12 bg-white sticky top-0 z-10 border-b border-slate-100">
+          <div className="flex gap-2 flex-1 overflow-x-auto items-end h-full pt-6 scrollbar-hide mr-8">
+            {state.projects.map(p => (
+              <div 
+                key={p.id}
+                onClick={() => setState(s => ({...s, currentProjectId: p.id}))}
+                className={`group relative flex items-center gap-3 px-6 py-3 rounded-t-xl border-t border-x cursor-pointer transition-all min-w-32 max-w-xs flex-shrink-0 ${state.currentProjectId === p.id ? 'bg-white border-slate-200 text-zenith-accent z-10 before:absolute before:-bottom-px before:left-0 before:right-0 before:h-px before:bg-white' : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100 shadow-inner'}`}
+              >
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${state.currentProjectId === p.id ? 'bg-zenith-accent shadow-[0_0_8px_rgba(0,122,255,0.4)]' : 'bg-slate-300 group-hover:bg-slate-400'}`} />
+                <span className={`text-sm font-medium truncate flex-1 transition-colors ${state.currentProjectId === p.id ? 'text-slate-900' : 'text-slate-500'}`}>{p.name || '未命名项目'}</span>
+                {state.projects.length > 1 && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setState(s => {
+                        const newProjects = s.projects.filter(proj => proj.id !== p.id);
+                        return {
+                          ...s,
+                          projects: newProjects,
+                          currentProjectId: s.currentProjectId === p.id ? newProjects[newProjects.length - 1].id : s.currentProjectId
+                        };
+                      });
+                    }}
+                    className="p-1 rounded-md hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 absolute right-2"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
 
           <div className="flex items-center gap-6">
@@ -449,7 +450,18 @@ export default function App() {
                 深度
               </button>
             </div>
-            <button className="bg-slate-900 text-white px-6 py-2 rounded-2xl text-sm font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-md">
+            <button 
+              onClick={() => {
+                const newId = Math.random().toString(36).substr(2, 9);
+                setState(s => ({
+                  ...s,
+                  projects: [...s.projects, { ...INITIAL_PROJECT, id: newId, name: `未命名项目 ${s.projects.length + 1}` }],
+                  currentProjectId: newId,
+                  activeModule: 'input'
+                }));
+              }}
+              className="bg-slate-900 text-white px-6 py-2 rounded-2xl text-sm font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-md shrink-0"
+            >
               <Plus size={18} />
               新建项目
             </button>
@@ -771,7 +783,7 @@ export default function App() {
                         {[1, 2].map(i => (
                           <div key={i} className="group cursor-pointer">
                             <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-1">2026.03.{20-i}</p>
-                            <p className="text-xs text-slate-400 group-hover:text-slate-900 transition-colors line-clamp-2">关于“{state.currentProject?.name}”的定价策略深度推演报告...</p>
+                            <p className="text-xs text-slate-400 group-hover:text-slate-900 transition-colors line-clamp-2">关于“{currentProject?.name}”的定价策略深度推演报告...</p>
                           </div>
                         ))}
                       </div>
@@ -805,7 +817,7 @@ export default function App() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
                   {/* Row 1: Identity & Upload */}
-                  <div {...getPanelProps("input-identity", "lg:col-span-7 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
+                  <div {...getPanelProps("input-identity", "lg:col-span-8 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500 flex items-center gap-3">
                         <Compass size={14} className="text-zenith-accent" />
@@ -814,47 +826,47 @@ export default function App() {
                       <span className="text-[10px] font-mono text-slate-500">ID: PRD-001</span>
                     </div>
                     
-                    <div className="space-y-6">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600 ml-1">产品名称 (Product Name)</label>
+                    <div className="space-y-4">
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all">
+                        <label className="text-[9px] uppercase tracking-widest font-bold text-slate-400 ml-1">产品名称 (Product Name)</label>
                         <input 
                           type="text" 
-                          value={state.currentProject?.name}
-                          onChange={(e) => setState(s => ({...s, currentProject: {...s.currentProject!, name: e.target.value}}))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-light leading-relaxed outline-none focus:border-zenith-accent/30 focus:bg-white transition-all text-slate-700 placeholder:text-slate-400"
+                          value={currentProject?.name}
+                          onChange={(e) => updateCurrentProject({ name: e.target.value })}
+                          className="w-full bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300"
                           placeholder="输入产品名称..."
                         />
                       </div>
                       
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600 ml-1">产品构成 (Product Composition)</label>
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all">
+                        <label className="text-[9px] uppercase tracking-widest font-bold text-slate-400 ml-1">产品构成 (Product Composition)</label>
                         <textarea 
                           rows={3}
-                          value={state.currentProject?.productComposition || ''}
-                          onChange={(e) => setState(s => ({...s, currentProject: {...s.currentProject!, productComposition: e.target.value}}))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-light leading-relaxed outline-none focus:border-zenith-accent/30 focus:bg-white transition-all resize-none text-slate-700 placeholder:text-slate-400"
+                          value={currentProject?.productComposition || ''}
+                          onChange={(e) => updateCurrentProject({ productComposition: e.target.value })}
+                          className="w-full bg-transparent border-none outline-none text-sm font-medium leading-relaxed resize-none text-slate-900 placeholder:text-slate-300"
                           placeholder="一句话描述产品设计思路..."
                         />
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600 ml-1">核心价值主张 (Core Value)</label>
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all">
+                        <label className="text-[9px] uppercase tracking-widest font-bold text-slate-400 ml-1">核心价值主张 (Core Value)</label>
                         <input 
                           type="text" 
-                          value={state.currentProject?.coreValue}
-                          onChange={(e) => setState(s => ({...s, currentProject: {...s.currentProject!, coreValue: e.target.value}}))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-light leading-relaxed outline-none focus:border-zenith-accent/30 focus:bg-white transition-all text-slate-700 placeholder:text-slate-400"
+                          value={currentProject?.coreValue}
+                          onChange={(e) => updateCurrentProject({ coreValue: e.target.value })}
+                          className="w-full bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300"
                           placeholder="描述你的产品如何解决核心痛点..."
                         />
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600 ml-1">核心卖点 (USP)</label>
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all">
+                        <label className="text-[9px] uppercase tracking-widest font-bold text-slate-400 ml-1">核心卖点 (USP)</label>
                         <input 
                           type="text" 
-                          value={state.currentProject?.usp}
-                          onChange={(e) => setState(s => ({...s, currentProject: {...s.currentProject!, usp: e.target.value}}))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-light leading-relaxed outline-none focus:border-zenith-accent/30 focus:bg-white transition-all text-slate-700 placeholder:text-slate-400"
+                          value={currentProject?.usp}
+                          onChange={(e) => updateCurrentProject({ usp: e.target.value })}
+                          className="w-full bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300"
                           placeholder="输入或由 AI 提取核心卖点..."
                         />
                       </div>
@@ -862,7 +874,7 @@ export default function App() {
                   </div>
 
                   <div 
-                    {...getPanelProps("input-upload", "lg:col-span-5 glass-panel p-8 border-dashed border-slate-300 bg-slate-50/30 flex flex-col items-center justify-center text-center group cursor-pointer hover:bg-slate-50 transition-all h-full min-h-[320px]")}
+                    {...getPanelProps("input-upload", "lg:col-span-4 glass-panel p-8 bg-slate-50/30 flex flex-col items-center justify-center text-center group cursor-pointer hover:bg-slate-50 hover:border-zenith-accent/40 hover:shadow-md transition-all h-full min-h-[320px]")}
                     onClick={handleUploadClick}
                   >
                     <input 
@@ -943,17 +955,17 @@ export default function App() {
                       用户故事 / User Stories
                     </h3>
                     <div className="space-y-4">
-                      {state.currentProject?.userStories?.map((story, i) => (
-                        <div key={i} className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl focus-within:border-zenith-accent/30 focus-within:bg-white transition-all group relative">
+                      {currentProject?.userStories?.map((story, i) => (
+                        <div key={i} className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl focus-within:border-zenith-accent/30 focus-within:bg-white transition-all group relative">
                           <CheckCircle2 size={14} className="text-emerald-500 mt-1 flex-shrink-0" />
                           <textarea 
                             value={story}
                             onChange={(e) => {
-                              const newStories = [...(state.currentProject?.userStories || [])];
+                              const newStories = [...(currentProject?.userStories || [])];
                               newStories[i] = e.target.value;
-                              setState(s => ({...s, currentProject: {...s.currentProject!, userStories: newStories}}));
+                              updateCurrentProject({ userStories: newStories });
                             }}
-                            className="w-full bg-transparent border-none outline-none text-xs text-slate-600 leading-relaxed resize-none overflow-hidden"
+                            className="w-full bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none overflow-hidden"
                             rows={2}
                             placeholder="输入用户故事..."
                           />
@@ -962,7 +974,7 @@ export default function App() {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          setState(s => ({...s, currentProject: {...s.currentProject!, userStories: [...(s.currentProject?.userStories || []), ""]}}));
+                          updateCurrentProject({ userStories: [...(currentProject?.userStories || []), ""] });
                         }}
                         className="w-full py-3 border border-dashed border-slate-200 rounded-xl text-xs text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
                       >
@@ -977,21 +989,21 @@ export default function App() {
                       竞品格局 / Competition
                     </h3>
                     <div className="space-y-4 flex-1 flex flex-col">
-                      <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all flex-1 flex flex-col">
-                        <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">直接竞品</p>
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all flex-1 flex flex-col">
+                        <p className="text-[9px] text-slate-400 uppercase font-bold tracking-widest ml-1">直接竞品 (Direct Competitors)</p>
                         <textarea 
-                          value={state.currentProject?.directCompetitors || ''}
-                          onChange={(e) => setState(s => ({...s, currentProject: {...s.currentProject!, directCompetitors: e.target.value}}))}
-                          className="w-full flex-1 bg-transparent border-none outline-none text-xs text-slate-900 font-medium placeholder:text-slate-400 resize-none"
+                          value={currentProject?.directCompetitors || ''}
+                          onChange={(e) => updateCurrentProject({ directCompetitors: e.target.value })}
+                          className="w-full flex-1 bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none"
                           placeholder="输入直接竞品..."
                         />
                       </div>
-                      <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all flex-1 flex flex-col">
-                        <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">潜在威胁</p>
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all flex-1 flex flex-col">
+                        <p className="text-[9px] text-slate-400 uppercase font-bold tracking-widest ml-1">潜在威胁 (Potential Threats)</p>
                         <textarea 
-                          value={state.currentProject?.potentialThreats || ''}
-                          onChange={(e) => setState(s => ({...s, currentProject: {...s.currentProject!, potentialThreats: e.target.value}}))}
-                          className="w-full flex-1 bg-transparent border-none outline-none text-xs text-slate-900 font-medium placeholder:text-slate-400 resize-none"
+                          value={currentProject?.potentialThreats || ''}
+                          onChange={(e) => updateCurrentProject({ potentialThreats: e.target.value })}
+                          className="w-full flex-1 bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none"
                           placeholder="输入潜在威胁..."
                         />
                       </div>
@@ -1004,11 +1016,12 @@ export default function App() {
                         <Users size={14} className="text-emerald-500" />
                         用户画像 / Persona
                       </h3>
-                      <div className="space-y-3 flex-1 flex flex-col">
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all flex-1 flex flex-col">
+                        <label className="text-[9px] uppercase tracking-widest font-bold text-slate-400 ml-1">用户画像 (User Persona)</label>
                         <textarea 
-                          value={state.currentProject?.userPersona}
-                          onChange={(e) => setState(s => ({...s, currentProject: {...s.currentProject!, userPersona: e.target.value}}))}
-                          className="w-full flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-light outline-none focus:border-zenith-accent/30 focus:bg-white transition-all text-slate-900 placeholder:text-slate-400 resize-none min-h-[120px]"
+                          value={currentProject?.userPersona}
+                          onChange={(e) => updateCurrentProject({ userPersona: e.target.value })}
+                          className="w-full flex-1 bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none"
                           placeholder="描述目标用户画像..."
                         />
                       </div>
@@ -1047,13 +1060,26 @@ export default function App() {
                       <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500">增长模型选择 / Model Selection</h3>
                       <div className="flex gap-3">
                         {['PLG', 'SLG', 'Content'].map(m => (
-                          <button 
-                            key={m}
-                            onClick={() => setState(s => ({...s, currentProject: {...s.currentProject!, gtmModel: m as any}}))}
-                            className={`px-5 py-2 rounded-full text-[10px] font-bold transition-all ${state.currentProject?.gtmModel === m ? 'bg-zenith-accent text-white shadow-lg shadow-zenith-accent/20' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`}
-                          >
-                            {m}
-                          </button>
+                          <div key={m} className="relative group">
+                            <button 
+                              onClick={() => updateCurrentProject({ gtmModel: m as any })}
+                              className={`px-5 py-2 rounded-full text-[10px] font-bold transition-all ${currentProject?.gtmModel === m ? 'bg-zenith-accent text-white shadow-lg shadow-zenith-accent/20' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`}
+                            >
+                              {m}
+                            </button>
+                            {m === 'PLG' && (
+                              <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-64 bg-slate-900 text-white text-xs font-normal leading-relaxed p-4 rounded-2xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-50 shadow-2xl">
+                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900 rotate-45 rounded-sm"></div>
+                                <div className="relative z-10">将产品本身打造为获客、转化与留存的核心引擎，通过让用户“先体验价值，后付费订阅”来实现低成本的病毒式增长</div>
+                              </div>
+                            )}
+                            {m === 'SLG' && (
+                              <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-64 bg-slate-900 text-white text-xs font-normal leading-relaxed p-4 rounded-2xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-50 shadow-2xl">
+                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900 rotate-45 rounded-sm"></div>
+                                <div className="relative z-10">依靠销售团队的主动触达、深度演示与一对一谈判，针对高客单价或复杂需求客户实现精准获客与价值转化。</div>
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -1061,20 +1087,20 @@ export default function App() {
                     <div className="space-y-12">
                       <GtmSlider 
                         label="内容营销" 
-                        value={state.currentProject?.gtmStrategy.contentMarketing || 0} 
-                        onChange={(v) => setState(s => ({...s, currentProject: {...s.currentProject!, gtmStrategy: {...s.currentProject!.gtmStrategy, contentMarketing: v}}}))}
+                        value={currentProject?.gtmStrategy.contentMarketing || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: v } })}
                         color="bg-emerald-400"
                       />
                       <GtmSlider 
                         label="付费投放" 
-                        value={state.currentProject?.gtmStrategy.paidAds || 0} 
-                        onChange={(v) => setState(s => ({...s, currentProject: {...s.currentProject!, gtmStrategy: {...s.currentProject!.gtmStrategy, paidAds: v}}}))}
+                        value={currentProject?.gtmStrategy.paidAds || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: v } })}
                         color="bg-blue-400"
                       />
                       <GtmSlider 
                         label="推荐与裂变" 
-                        value={state.currentProject?.gtmStrategy.referral || 0} 
-                        onChange={(v) => setState(s => ({...s, currentProject: {...s.currentProject!, gtmStrategy: {...s.currentProject!.gtmStrategy, referral: v}}}))}
+                        value={currentProject?.gtmStrategy.referral || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: v } })}
                         color="bg-purple-400"
                       />
                     </div>
@@ -1097,9 +1123,9 @@ export default function App() {
                         <PieChart>
                           <Pie
                             data={[
-                              { name: '内容营销', value: state.currentProject?.gtmStrategy.contentMarketing || 0 },
-                              { name: '付费投放', value: state.currentProject?.gtmStrategy.paidAds || 0 },
-                              { name: '推荐与裂变', value: state.currentProject?.gtmStrategy.referral || 0 },
+                              { name: '内容营销', value: currentProject?.gtmStrategy.contentMarketing || 0 },
+                              { name: '付费投放', value: currentProject?.gtmStrategy.paidAds || 0 },
+                              { name: '推荐与裂变', value: currentProject?.gtmStrategy.referral || 0 },
                             ]}
                             cx="50%"
                             cy="50%"
@@ -1139,7 +1165,7 @@ export default function App() {
                         AI 渠道洞察
                       </p>
                       <p className="text-sm text-slate-700 font-sans leading-relaxed">
-                        “基于你的 {state.currentProject?.gtmModel} 模式，建议在初期重点投入‘内容营销’以建立品牌信任，随后通过‘推荐与裂变’降低获客成本。”
+                        “基于你的 {currentProject?.gtmModel} 模式，建议在初期重点投入‘内容营销’以建立品牌信任，随后通过‘推荐与裂变’降低获客成本。”
                       </p>
                     </div>
                   </div>
@@ -1149,14 +1175,14 @@ export default function App() {
                     <div className="glass-panel p-8 space-y-5 h-full">
                       <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600">预期裂变系数 (κ)</label>
                       <div className="flex items-end gap-5">
-                        <span className="text-4xl font-sans font-bold text-slate-900">{state.currentProject?.gtmStrategy.kFactor}</span>
+                        <span className="text-4xl font-sans font-bold text-slate-900">{currentProject?.gtmStrategy.kFactor}</span>
                         <span className="text-xs text-emerald-400 mb-1.5">High Viral</span>
                       </div>
                     </div>
                     <div className="glass-panel p-8 space-y-5 h-full">
                       <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600">LTV / CAC 预估</label>
                       <div className="flex items-end gap-5">
-                        <span className="text-4xl font-sans font-bold text-slate-900">{state.currentProject?.gtmStrategy.ltvCac}x</span>
+                        <span className="text-4xl font-sans font-bold text-slate-900">{currentProject?.gtmStrategy.ltvCac}x</span>
                         <span className="text-xs text-emerald-400 mb-1.5">Healthy</span>
                       </div>
                     </div>
@@ -1292,9 +1318,9 @@ export default function App() {
                     <div className="w-full h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                          { subject: '可行性 (Sf)', A: state.currentProject?.scores?.feasibility || 0, fullMark: 100 },
-                          { subject: '市场潜力 (Sm)', A: state.currentProject?.scores?.marketPotential || 0, fullMark: 100 },
-                          { subject: '风险抵御 (Sr)', A: state.currentProject?.scores?.riskResilience || 0, fullMark: 100 },
+                          { subject: '可行性 (Sf)', A: currentProject?.scores?.feasibility || 0, fullMark: 100 },
+                          { subject: '市场潜力 (Sm)', A: currentProject?.scores?.marketPotential || 0, fullMark: 100 },
+                          { subject: '风险抵御 (Sr)', A: currentProject?.scores?.riskResilience || 0, fullMark: 100 },
                         ]}>
                           <PolarGrid stroke="#e2e8f0" />
                           <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12 }} />
@@ -1315,17 +1341,17 @@ export default function App() {
                       <div className="space-y-8">
                         <ScoreDetail 
                           label="可行性分数 (Sf)" 
-                          score={state.currentProject?.scores?.feasibility || 0} 
+                          score={currentProject?.scores?.feasibility || 0} 
                           desc="基于技术成本与当前 AI 能力的匹配度。当前扣分项：云端推理成本略高。"
                         />
                         <ScoreDetail 
                           label="市场潜力分数 (Sm)" 
-                          score={state.currentProject?.scores?.marketPotential || 0} 
+                          score={currentProject?.scores?.marketPotential || 0} 
                           desc="基于 LTV/CAC 模型和竞品重合度。当前优势：细分市场渗透率预测较高。"
                         />
                         <ScoreDetail 
                           label="风险抵御力 (Sr)" 
-                          score={state.currentProject?.scores?.riskResilience || 0} 
+                          score={currentProject?.scores?.riskResilience || 0} 
                           desc="基于在极端变量模拟中的表现。需注意：对获客成本波动的敏感度较高。"
                         />
                       </div>
@@ -1431,67 +1457,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* Spotlight Search */}
-      <AnimatePresence>
-        {isSpotlightOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-slate-900/40 backdrop-blur-sm p-4"
-            onClick={() => setIsSpotlightOpen(false)}
-          >
-            <motion.div 
-              initial={{ scale: 0.98, y: -10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.98, y: -10 }}
-              className="w-full max-w-2xl glass-panel shadow-2xl overflow-hidden border-slate-200 bg-white"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-6 p-6 border-b border-slate-100">
-                <Search size={22} className="text-slate-400" />
-                <input 
-                  autoFocus
-                  type="text" 
-                  placeholder="搜索命令、模块或模拟..." 
-                  className="flex-1 bg-transparent border-none outline-none text-xl font-light tracking-wide placeholder:text-slate-300 text-slate-900"
-                />
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-500">
-                  ESC
-                </div>
-              </div>
-              <div className="p-4 space-y-2">
-                <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">快速操作 / Quick Actions</div>
-                <SpotlightItem icon={<Zap size={16} />} label="运行生存测试" shortcut="S" />
-                <SpotlightItem icon={<Cpu size={16} />} label="运行爆发测试" shortcut="B" />
-                <SpotlightItem icon={<BrainCircuit size={16} />} label="询问顾问" shortcut="A" />
-                <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-4">导航 / Navigation</div>
-                <SpotlightItem icon={<LayoutDashboard size={16} />} label="前往资产输入与结构" />
-                <SpotlightItem icon={<Target size={16} />} label="前往 GTM 营销布局" />
-                <SpotlightItem icon={<Activity size={16} />} label="前往哨所监控" />
-              </div>
-              <div className="px-8 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-4 text-[9px] text-slate-400 uppercase tracking-widest">
-                  <span>↑↓ 选择</span>
-                  <span>ENTER 执行</span>
-                </div>
-                <div className="text-[9px] text-slate-500">ZENITH COMMAND v1.2</div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
-  );
-}
-
-function SpotlightItem({ icon, label, shortcut }: { icon: React.ReactNode, label: string, shortcut?: string }) {
-  return (
-    <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 transition-colors text-sm group">
-      <span className="text-slate-400 group-hover:text-zenith-accent">{icon}</span>
-      <span className="flex-1 text-left text-slate-700 font-medium">{label}</span>
-      {shortcut && <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{shortcut}</span>}
-    </button>
   );
 }
 
