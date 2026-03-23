@@ -8,18 +8,28 @@ export interface ProductData {
   directCompetitors?: string;
   potentialThreats?: string;
   userPersona: string;
-  gtmModel?: 'PLG' | 'SLG' | 'Content';
+  gtmModel?: 'PLG';
   pricingModel?: 'Freemium' | 'FreeTrial' | 'Tiered' | 'PayAsYouGo';
-  targetMarket?: 'B2C' | 'SMB' | 'MidMarket' | 'Enterprise';
-  salesCycle?: 'Short' | 'Medium' | 'Long';
+  targetMarket: {
+    country: string;
+    age: string;
+    occupation: string;
+    income: string;
+  };
+  salesCycle?: 'Short' | 'Medium' | 'Long' | 'ExtraLong';
   gtmStrategy: {
     contentMarketing: number;
     paidAds: number;
     referral: number;
     outboundSales: number;
     seoAso: number;
-    kFactor?: number;
-    ltvCac?: number;
+  };
+  costStructure?: {
+    dailyFreeUses: number;
+    costPerCall: number;
+    targetMau: number;
+    paidConversionRate: number;
+    monthlySubscription: number;
   };
   scores?: {
     feasibility: number;

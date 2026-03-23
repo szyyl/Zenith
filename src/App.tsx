@@ -63,16 +63,26 @@ const INITIAL_PROJECT: ProductData = {
   userPersona: "",
   gtmModel: 'PLG',
   pricingModel: 'Freemium',
-  targetMarket: 'SMB',
+  targetMarket: {
+    country: '',
+    age: '',
+    occupation: '',
+    income: ''
+  },
   salesCycle: 'Short',
   gtmStrategy: {
     contentMarketing: 0,
     paidAds: 0,
     referral: 0,
     outboundSales: 0,
-    seoAso: 0,
-    kFactor: 0,
-    ltvCac: 0
+    seoAso: 0
+  },
+  costStructure: {
+    dailyFreeUses: 5,
+    costPerCall: 0.01,
+    targetMau: 100000,
+    paidConversionRate: 20,
+    monthlySubscription: 19.99
   },
   scores: {
     feasibility: 0,
@@ -581,10 +591,11 @@ export default function App() {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                         <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-                        <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} dx={-10} />
+                        <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} dx={-10} tickFormatter={(value) => `$${value}`} />
                         <Tooltip 
                           contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', color: '#0f172a' }}
                           itemStyle={{ fontSize: '12px' }}
+                          formatter={(value: any, name: string) => name === 'revenue' ? [`$${value} USD/月`, '营收'] : [value, '用户']}
                         />
                         <Area type="monotone" dataKey="users" stroke="#10b981" fillOpacity={1} fill="url(#colorUsers)" strokeWidth={3} />
                         <Area type="monotone" dataKey="revenue" stroke="#007AFF" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
@@ -594,7 +605,7 @@ export default function App() {
 
                   <div className="lg:col-span-4 flex flex-col gap-8 h-full">
                     <StatCard label="LTV / CAC 比率" value="3.4x" trend="+0.2" tooltip="赚钱效率" />
-                    <StatCard label="云端推理成本 (Est.)" value="$0.12/req" trend="稳定" />
+                    <StatCard label="云端推理成本 (Est.)" value="$0.12 USD/req" trend="稳定" />
                     <StatCard label="损益平衡周期" value="8.5 个月" trend="-1.2" />
                     <div {...getPanelProps("sandbox-tuning", "glass-panel p-8 space-y-6 border-slate-200 bg-white flex-1")}>
                       <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500 flex items-center gap-3">
@@ -1172,10 +1183,19 @@ export default function App() {
                         <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
                           <Compass size={12} className="text-zenith-accent" />增长模型 / Growth Model
                         </h3>
-                        <div className="flex flex-wrap gap-2">
-                          {['PLG', 'SLG', 'Content'].map(m => (
-                            <button key={m} onClick={() => updateCurrentProject({ gtmModel: m as any })} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${currentProject?.gtmModel === m ? 'bg-zenith-accent text-white shadow-md shadow-zenith-accent/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{m}</button>
-                          ))}
+                        <div className="flex items-center gap-3">
+                          <div className="px-4 py-1.5 rounded-xl text-xs font-bold bg-zenith-accent text-white shadow-md shadow-zenith-accent/20 flex items-center gap-2 cursor-help group/plg relative">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            PLG (产品驱动增长)
+                            
+                            {/* Tooltip for the single model */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-slate-900 text-white text-[10px] font-normal leading-relaxed p-4 rounded-2xl opacity-0 translate-y-2 pointer-events-none group-hover/plg:opacity-100 group-hover/plg:translate-y-0 transition-all duration-300 z-[100] shadow-2xl border border-white/10">
+                              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900 rotate-45 border-b border-r border-white/10"></div>
+                              <p className="font-bold text-zenith-accent border-b border-white/10 pb-1 uppercase tracking-widest mb-2">Product-Led Growth</p>
+                              <p className="text-slate-300">以产品为核心驱动力，通过优异的用户体验、口碑传播和自助服务实现增长。适合低客单价、高频使用的 SaaS 软件。</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-slate-400 italic">当前项目默认采用</span>
                         </div>
                       </div>
                       
@@ -1183,15 +1203,96 @@ export default function App() {
                         <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
                           <Target size={12} className="text-indigo-500" />目标客群 / Target Market
                         </h3>
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { id: 'B2C', label: '大众 (B2C)' },
-                            { id: 'SMB', label: '中小企 (SMB)' },
-                            { id: 'MidMarket', label: '中大型 (Mid-Market)' },
-                            { id: 'Enterprise', label: '超大型 (Enterprise)' }
-                          ].map(t => (
-                            <button key={t.id} onClick={() => updateCurrentProject({ targetMarket: t.id as any })} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentProject?.targetMarket === t.id ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{t.label}</button>
-                          ))}
+                        <div className="grid grid-cols-2 gap-2">
+                          <input 
+                            list="countries-list"
+                            placeholder="搜索国家/地区..." 
+                            value={currentProject?.targetMarket?.country || ''} 
+                            onChange={e => updateCurrentProject({ targetMarket: { ...currentProject!.targetMarket, country: e.target.value } })}
+                            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full shadow-sm transition-all"
+                          />
+                          <datalist id="countries-list">
+                            <option value="中国" />
+                            <option value="中国台湾" />
+                            <option value="米国 (美国)" />
+                            <option value="美国" />
+                            <option value="英国" />
+                            <option value="小日本" />
+                            <option value="德国" />
+                            <option value="法国" />
+                            <option value="俄罗斯" />
+                            <option value="加拿大" />
+                            <option value="澳大利亚" />
+                            <option value="巴西" />
+                            <option value="印度" />
+                            <option value="韩国" />
+                            <option value="新加坡" />
+                            <option value="意大利" />
+                            <option value="西班牙" />
+                            <option value="墨西哥" />
+                            <option value="印度尼西亚" />
+                            <option value="沙特阿拉伯" />
+                            <option value="土耳其" />
+                            <option value="荷兰" />
+                            <option value="瑞士" />
+                            <option value="瑞典" />
+                            <option value="挪威" />
+                            <option value="丹麦" />
+                            <option value="芬兰" />
+                            <option value="希腊" />
+                            <option value="葡萄牙" />
+                            <option value="爱尔兰" />
+                            <option value="奥地利" />
+                            <option value="比利时" />
+                            <option value="捷克" />
+                            <option value="波兰" />
+                            <option value="匈牙利" />
+                            <option value="罗马尼亚" />
+                            <option value="越南" />
+                            <option value="泰国" />
+                            <option value="马来西亚" />
+                            <option value="菲律宾" />
+                            <option value="哈萨克斯坦" />
+                            <option value="阿拉伯联合酋长国" />
+                            <option value="以色列" />
+                            <option value="埃及" />
+                            <option value="南非" />
+                            <option value="尼日利亚" />
+                            <option value="阿根廷" />
+                            <option value="智利" />
+                            <option value="哥伦比亚" />
+                            <option value="秘鲁" />
+                            <option value="新西兰" />
+                            <option value="乌克兰" />
+                            <option value="巴基斯坦" />
+                            <option value="孟加拉国" />
+                            <option value="伊朗" />
+                            <option value="伊拉克" />
+                            <option value="阿尔及利亚" />
+                            <option value="摩洛哥" />
+                            <option value="肯尼亚" />
+                            <option value="埃塞俄比亚" />
+                            <option value="加纳" />
+                            <option value="坦桑尼亚" />
+                          </datalist>
+                          <input 
+                            placeholder="年龄段..." 
+                            value={currentProject?.targetMarket?.age || ''} 
+                            onChange={e => updateCurrentProject({ targetMarket: { ...currentProject!.targetMarket, age: e.target.value } })}
+                            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full"
+                          />
+                          <input 
+                            placeholder="职业..." 
+                            value={currentProject?.targetMarket?.occupation || ''} 
+                            onChange={e => updateCurrentProject({ targetMarket: { ...currentProject!.targetMarket, occupation: e.target.value } })}
+                            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full"
+                          />
+                          <input 
+                            placeholder="收入范围 (USD/月)..." 
+                            value={currentProject?.targetMarket?.income || ''} 
+                            onChange={e => updateCurrentProject({ targetMarket: { ...currentProject!.targetMarket, income: e.target.value } })}
+                            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full"
+                          />
                         </div>
                       </div>
 
@@ -1199,14 +1300,14 @@ export default function App() {
                         <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
                           <DollarSign size={12} className="text-amber-500" />定价策略 / Pricing
                         </h3>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {[
                             { id: 'Freemium', label: '免费增值' },
                             { id: 'FreeTrial', label: '免费试用' },
                             { id: 'Tiered', label: '分级订阅' },
                             { id: 'PayAsYouGo', label: '按量付费' }
                           ].map(p => (
-                            <button key={p.id} onClick={() => updateCurrentProject({ pricingModel: p.id as any })} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentProject?.pricingModel === p.id ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{p.label}</button>
+                            <button key={p.id} onClick={() => updateCurrentProject({ pricingModel: p.id as any })} className={`px-2 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all ${currentProject?.pricingModel === p.id ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{p.label}</button>
                           ))}
                         </div>
                       </div>
@@ -1215,13 +1316,14 @@ export default function App() {
                         <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
                           <Activity size={12} className="text-rose-500" />销售周期 / Sales Cycle
                         </h3>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {[
                             { id: 'Short', label: '短 (<1周)' },
                             { id: 'Medium', label: '中 (1-3月)' },
-                            { id: 'Long', label: '长 (>6月)' }
+                            { id: 'Long', label: '长 (>6月)' },
+                            { id: 'ExtraLong', label: '超长 (>12月)' }
                           ].map(s => (
-                            <button key={s.id} onClick={() => updateCurrentProject({ salesCycle: s.id as any })} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentProject?.salesCycle === s.id ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{s.label}</button>
+                            <button key={s.id} onClick={() => updateCurrentProject({ salesCycle: s.id as any })} className={`px-2 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all ${currentProject?.salesCycle === s.id ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{s.label}</button>
                           ))}
                         </div>
                       </div>
@@ -1261,12 +1363,126 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div {...getPanelProps("gtm-roi", "lg:col-span-5 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
-                    <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500">预测渠道 ROI / Projections</h3>
-                    <div className="space-y-8">
-                      <RoiItem label="TikTok 广告" roi="4.2x" confidence={85} />
-                      <RoiItem label="领英内容" roi="2.8x" confidence={92} />
-                      <RoiItem label="谷歌搜索" roi="1.5x" confidence={70} />
+                  <div {...getPanelProps("gtm-cost", "lg:col-span-5 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full flex flex-col justify-between")}>
+                    
+                    <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                      {/* Daily Free Uses Slider */}
+                      <div>
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-4">
+                          <span>日免费次</span>
+                          <span className="text-indigo-600 font-sans">{currentProject?.costStructure?.dailyFreeUses ?? 5}</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="20" 
+                          step="1" 
+                          value={currentProject?.costStructure?.dailyFreeUses ?? 5}
+                          onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, dailyFreeUses: parseInt(e.target.value) } as any })}
+                          className="w-full accent-indigo-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Target MAU */}
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 mb-3 block">目标月活 (MAU)</label>
+                        <input 
+                          type="number" 
+                          value={currentProject?.costStructure?.targetMau ?? 100000}
+                          onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, targetMau: parseInt(e.target.value) || 0 } as any })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:bg-white focus:border-indigo-400 shadow-sm font-sans transition-all"
+                        />
+                      </div>
+
+                      {/* Cost Per Call Input */}
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 mb-3 block">单次成本 (USD)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold z-10">$</span>
+                          <input 
+                            type="number" 
+                            step="0.001"
+                            value={currentProject?.costStructure?.costPerCall !== undefined ? currentProject.costStructure.costPerCall : 0.01}
+                            onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, costPerCall: parseFloat(e.target.value) || 0 } as any })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-6 text-xs focus:outline-none focus:bg-white focus:border-emerald-400 shadow-sm font-sans transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Paid Conversion Rate Slider */}
+                      <div>
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-4">
+                          <span>付费转化率</span>
+                          <span className="text-emerald-500 font-sans">{currentProject?.costStructure?.paidConversionRate ?? 20}%</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="50" 
+                          step="1" 
+                          value={currentProject?.costStructure?.paidConversionRate ?? 20}
+                          onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, paidConversionRate: parseInt(e.target.value) } as any })}
+                          className="w-full accent-emerald-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Subscription Price Tabs */}
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 mb-3 block">订阅价格 (USD/月)</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[4.99, 9.99, 14.99, 19.99].map(price => (
+                            <button
+                              key={price}
+                              onClick={() => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, monthlySubscription: price } as any })}
+                              className={`py-2.5 rounded-xl text-[10px] font-bold transition-all ${
+                                (currentProject?.costStructure?.monthlySubscription ?? 19.99) === price 
+                                  ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20' 
+                                  : 'bg-white border border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                              }`}
+                            >
+                              ${price}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Results Card */}
+                    <div className="mt-6 bg-slate-50 border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] rounded-3xl p-6 space-y-5">
+                      {(() => {
+                        const mau = currentProject?.costStructure?.targetMau ?? 100000;
+                        const convRate = currentProject?.costStructure?.paidConversionRate ?? 20;
+                        const subPrice = currentProject?.costStructure?.monthlySubscription ?? 19.99;
+                        const freeUses = currentProject?.costStructure?.dailyFreeUses ?? 5;
+                        const costPerCall = currentProject?.costStructure?.costPerCall !== undefined ? currentProject.costStructure.costPerCall : 0.01;
+                        
+                        const paidUsers = mau * (convRate / 100);
+                        const revenue = paidUsers * subPrice;
+                        const totalCalls = mau * freeUses * 30;
+                        const cost = totalCalls * costPerCall;
+                        const profit = revenue - cost;
+
+                        const formatUSD = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
+
+                        return (
+                          <>
+                            <div className="flex justify-between items-center border-b border-white pb-4">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">营收预估</span>
+                              <span className="text-emerald-500 font-sans font-bold text-lg">+{formatUSD(revenue)} /月</span>
+                            </div>
+                            <div className="flex justify-between items-center border-b border-white pb-4">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">模型成本</span>
+                              <span className="text-rose-500 font-sans font-bold text-lg">-{formatUSD(cost)} /月</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2">
+                              <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">预估运营毛利</span>
+                              <div className="text-right">
+                                <span className="text-slate-900 font-sans font-bold text-2xl">{formatUSD(profit)}</span>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -1320,55 +1536,29 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div {...getPanelProps("gtm-insights", "lg:col-span-5 glass-panel p-8 bg-blue-50 border-blue-200 relative overflow-hidden group h-full min-h-[250px] flex flex-col justify-center")}>
-                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                      <BrainCircuit size={80} className="text-zenith-accent" />
-                    </div>
-                    <div className="relative z-10">
-                      <p className="text-[10px] text-zenith-accent font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Zap size={12} fill="currentColor" />
-                        AI 渠道洞察
-                      </p>
-                      <p className="text-sm text-slate-700 font-sans leading-relaxed">
-                        “基于你的 {currentProject?.gtmModel} 模式，建议在初期重点投入‘内容营销’以建立品牌信任，随后通过‘推荐与裂变’降低获客成本。”
-                      </p>
+                  <div {...getPanelProps("gtm-roi", "lg:col-span-5 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
+                    <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500">预测渠道 ROI / Projections</h3>
+                    <div className="space-y-8">
+                      <RoiItem label="TikTok 广告" roi="4.2x" confidence={85} />
+                      <RoiItem label="领英内容" roi="2.8x" confidence={92} />
+                      <RoiItem label="谷歌搜索" roi="1.5x" confidence={70} />
                     </div>
                   </div>
 
-                  {/* Row 3: Stats */}
-                  <div className="lg:col-span-7 grid grid-cols-2 gap-8">
-                    <div className="glass-panel p-8 space-y-5 h-full">
-                      <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600">预期裂变系数 (κ)</label>
-                      <div className="flex items-end gap-5">
-                        <span className="text-4xl font-sans font-bold text-slate-900">{currentProject?.gtmStrategy.kFactor}</span>
-                        <span className="text-xs text-emerald-400 mb-1.5">High Viral</span>
-                      </div>
-                    </div>
-                    <div className="glass-panel p-8 space-y-5 h-full">
-                      <div className="flex items-center gap-2">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600">LTV / CAC 预估</label>
-                        <div className="group/tooltip relative">
-                          <div className="w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[8px] cursor-help font-bold hover:bg-slate-300 transition-colors">?</div>
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity z-50 shadow-lg font-normal tracking-wide">
-                            赚钱效率
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-end gap-5">
-                        <span className="text-4xl font-sans font-bold text-slate-900">{currentProject?.gtmStrategy.ltvCac}x</span>
-                        <span className="text-xs text-emerald-400 mb-1.5">Healthy</span>
-                      </div>
-                    </div>
-                  </div>
+
                 </div>
 
-                <div className="flex justify-end pt-4">
+                <div className="flex flex-col items-end gap-3 pt-8 pb-4">
+                  <p className="text-[10px] text-slate-400 font-medium italic">配置完以上 GTM 组合后，点击下方进入沙盘推演</p>
                   <button
-                    onClick={() => setState(s => ({ ...s, activeModule: 'sandbox' }))}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
+                    onClick={() => {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      setState(s => ({ ...s, activeModule: 'sandbox' }));
+                    }}
+                    className="group flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-zenith-accent transition-all shadow-xl hover:shadow-zenith-accent/20"
                   >
-                    下一步：动态沙盘推演 <ArrowRight size={16} />
+                    下一步：进入沙盘推演
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
               </motion.div>
@@ -1398,7 +1588,7 @@ export default function App() {
                 <div {...getPanelProps("monitoring-live", "grid grid-cols-1 md:grid-cols-3 gap-6 p-2 rounded-3xl")}>
                   <MetricCard label="活跃用户 (MAU)" value="12,480" change="12.4%" trend="up" />
                   <MetricCard label="情感指数 (Sentiment)" value="88%" change="2.1%" trend="up" />
-                  <MetricCard label="获客成本 (CAC)" value="$12.40" change="4.2%" trend="down" />
+                  <MetricCard label="获客成本 (CAC)" value="$12.40 USD" change="4.2%" trend="down" />
                 </div>
 
                 <div {...getPanelProps("monitoring-sentiment", "glass-panel p-8 h-[300px] border-slate-200 bg-white")}>
@@ -1416,7 +1606,7 @@ export default function App() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                       <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tick={{ dy: 10 }} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tick={{ dx: -10 }} />
+                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tick={{ dx: -10 }} tickFormatter={(value) => `$${value}`} />
                       <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', fontSize: '12px', color: '#0f172a' }} />
                       <Area type="monotone" dataKey="revenue" stroke="#10b981" fillOpacity={1} fill="url(#colorSentiment)" strokeWidth={3} />
                     </AreaChart>
