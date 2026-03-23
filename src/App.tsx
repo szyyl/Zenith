@@ -23,7 +23,8 @@ import {
   Users,
   Link as LinkIcon,
   ArrowRight,
-  X
+  X,
+  DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppState, ProductData, SimulationResult } from './types';
@@ -52,29 +53,31 @@ import {
 // Mock data for initial state
 const INITIAL_PROJECT: ProductData = {
   id: "default-1",
-  name: "产品巅峰 (Zenith Alpha)",
-  coreValue: "通过多模型 AI 编排，使高端产品策略大众化。",
-  usp: "多模型协同的动态沙盘推演引擎",
-  productComposition: "基于 React 构建前端，结合 Gemini AI 提供深度推理，通过可视化图表展示推演结果。",
-  userStories: [
-    "作为创始人，我希望模拟不同获客成本下的盈利点",
-    "作为产品经理，我希望通过 AI 压力测试发现逻辑漏洞"
-  ],
-  directCompetitors: "Product A, Service B",
-  potentialThreats: "Big Tech X",
-  userPersona: "科技领域的初级创业者和产品负责人。",
+  name: "未命名项目",
+  coreValue: "",
+  usp: "",
+  productComposition: "",
+  userStories: [],
+  directCompetitors: "",
+  potentialThreats: "",
+  userPersona: "",
   gtmModel: 'PLG',
+  pricingModel: 'Freemium',
+  targetMarket: 'SMB',
+  salesCycle: 'Short',
   gtmStrategy: {
-    contentMarketing: 40,
-    paidAds: 40,
-    referral: 20,
-    kFactor: 1.2,
-    ltvCac: 3.4
+    contentMarketing: 0,
+    paidAds: 0,
+    referral: 0,
+    outboundSales: 0,
+    seoAso: 0,
+    kFactor: 0,
+    ltvCac: 0
   },
   scores: {
-    feasibility: 85,
-    marketPotential: 78,
-    riskResilience: 65
+    feasibility: 0,
+    marketPotential: 0,
+    riskResilience: 0
   }
 };
 
@@ -125,6 +128,7 @@ export default function App() {
   };
 
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(['sandbox']));
+  const [showSettings, setShowSettings] = useState(false);
 
   const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'success'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -147,9 +151,6 @@ export default function App() {
   const handleUploadClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setState(s => ({ ...s, activeSubModule: 'input-upload' }));
-    if (uploadState === 'idle') {
-      fileInputRef.current?.click();
-    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -289,7 +290,6 @@ export default function App() {
               { id: 'input-stories', label: '用户故事' },
               { id: 'input-competition', label: '竞品格局' },
               { id: 'input-upload', label: '资产上传' },
-              { id: 'input-tech', label: '技术底座' },
               { id: 'input-persona', label: '用户画像' }
             ]}
             activeSubId={state.activeSubModule}
@@ -388,7 +388,62 @@ export default function App() {
           />
         </nav>
 
-        <div className="p-6">
+        <div className="p-6 space-y-3">
+          {/* Model Selector */}
+          <div className="space-y-2">
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-slate-50/70 backdrop-blur-sm border border-slate-200 hover:bg-slate-100 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-3">
+                <BrainCircuit size={16} className="text-zenith-accent" />
+                <div className="text-left">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">AI 模型</p>
+                  <p className="text-xs font-medium text-slate-700">{modelMode === 'fast' ? 'Gemini Flash' : 'Gemini Pro'}</p>
+                </div>
+              </div>
+              <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${showSettings ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {showSettings && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-1.5 px-1 py-2">
+                    <button 
+                      onClick={() => { setModelMode('fast'); setShowSettings(false); }}
+                      className={`w-full text-left px-4 py-3 rounded-xl transition-all ${modelMode === 'fast' ? 'bg-zenith-accent/10 border border-zenith-accent/20' : 'hover:bg-slate-50 border border-transparent'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={`text-xs font-bold ${modelMode === 'fast' ? 'text-zenith-accent' : 'text-slate-700'}`}>⚡ 快速模式</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Gemini Flash · 低延迟响应</p>
+                        </div>
+                        {modelMode === 'fast' && <div className="w-2 h-2 rounded-full bg-zenith-accent" />}
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => { setModelMode('reasoning'); setShowSettings(false); }}
+                      className={`w-full text-left px-4 py-3 rounded-xl transition-all ${modelMode === 'reasoning' ? 'bg-zenith-accent/10 border border-zenith-accent/20' : 'hover:bg-slate-50 border border-transparent'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={`text-xs font-bold ${modelMode === 'reasoning' ? 'text-zenith-accent' : 'text-slate-700'}`}>🧠 深度推理</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Gemini Pro · 复杂逻辑分析</p>
+                        </div>
+                        {modelMode === 'reasoning' && <div className="w-2 h-2 rounded-full bg-zenith-accent" />}
+                      </div>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* User Profile */}
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-all cursor-pointer group">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
@@ -436,20 +491,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-2xl p-1">
-              <button 
-                onClick={() => setModelMode('fast')}
-                className={`px-4 py-1.5 text-xs rounded-xl transition-all ${modelMode === 'fast' ? 'bg-slate-900 text-white font-bold' : 'text-slate-500 hover:text-slate-900'}`}
-              >
-                快速
-              </button>
-              <button 
-                onClick={() => setModelMode('reasoning')}
-                className={`px-4 py-1.5 text-xs rounded-xl transition-all ${modelMode === 'reasoning' ? 'bg-slate-900 text-white font-bold' : 'text-slate-500 hover:text-slate-900'}`}
-              >
-                深度
-              </button>
-            </div>
             <button 
               onClick={() => {
                 const newId = Math.random().toString(36).substr(2, 9);
@@ -552,7 +593,7 @@ export default function App() {
                   </div>
 
                   <div className="lg:col-span-4 flex flex-col gap-8 h-full">
-                    <StatCard label="LTV / CAC 比率" value="3.4x" trend="+0.2" />
+                    <StatCard label="LTV / CAC 比率" value="3.4x" trend="+0.2" tooltip="赚钱效率" />
                     <StatCard label="云端推理成本 (Est.)" value="$0.12/req" trend="稳定" />
                     <StatCard label="损益平衡周期" value="8.5 个月" trend="-1.2" />
                     <div {...getPanelProps("sandbox-tuning", "glass-panel p-8 space-y-6 border-slate-200 bg-white flex-1")}>
@@ -874,7 +915,7 @@ export default function App() {
                   </div>
 
                   <div 
-                    {...getPanelProps("input-upload", "lg:col-span-4 glass-panel p-8 bg-slate-50/30 flex flex-col items-center justify-center text-center group cursor-pointer hover:bg-slate-50 hover:border-zenith-accent/40 hover:shadow-md transition-all h-full min-h-[320px]")}
+                    {...getPanelProps("input-upload", "lg:col-span-4 glass-panel p-8 flex flex-col text-center group hover:border-zenith-accent/40 hover:shadow-md transition-all h-full min-h-[320px]")}
                     onClick={handleUploadClick}
                   >
                     <input 
@@ -882,31 +923,45 @@ export default function App() {
                       ref={fileInputRef} 
                       className="hidden" 
                       onChange={handleFileChange} 
-                      accept=".pdf,.md,.docx"
+                      accept=".pdf,.md,.docx,.png,.jpg,.jpeg,.webp"
                     />
                     {uploadState === 'idle' && (
-                      <div className="w-full flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full border border-slate-200 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 bg-white">
-                          <FileOutput size={28} className="text-slate-400 group-hover:text-zenith-accent transition-colors" />
-                        </div>
-                        <div className="max-w-xs space-y-3 mb-6">
-                          <h4 className="text-base font-sans font-bold text-slate-900">多模态资产上传</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">点击上传 PDF/Markdown/Docx 文件</p>
-                        </div>
-                        
-                        <div className="flex items-center w-full max-w-xs mb-6">
+                      <div className="w-full flex flex-col items-center flex-1">
+                        {/* Header */}
+                        <h4 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500 flex items-center gap-3 self-start mb-6">
+                          <FileOutput size={14} className="text-zenith-accent" />
+                          多模态资产上传
+                        </h4>
+
+                        {/* Upload File Button */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                          className="w-full p-5 border-2 border-dashed border-slate-200 rounded-2xl hover:border-zenith-accent/40 hover:bg-zenith-accent/5 transition-all group/upload flex flex-col items-center gap-3 mb-4"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover/upload:bg-zenith-accent/10 group-hover/upload:scale-110 transition-all">
+                            <Plus size={20} className="text-slate-400 group-hover/upload:text-zenith-accent transition-colors" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">选择文件上传</p>
+                            <p className="text-[10px] text-slate-400 mt-1">支持 PDF / Markdown / Word / 图片</p>
+                          </div>
+                        </button>
+
+                        {/* Divider */}
+                        <div className="flex items-center w-full mb-4">
                           <div className="flex-1 h-px bg-slate-200"></div>
-                          <span className="px-3 text-[10px] text-slate-400 uppercase tracking-widest font-bold">OR</span>
+                          <span className="px-3 text-[10px] text-slate-400 uppercase tracking-widest font-bold">或粘贴链接</span>
                           <div className="flex-1 h-px bg-slate-200"></div>
                         </div>
 
-                        <div className="w-full max-w-sm flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        {/* Paste Link */}
+                        <div className="w-full flex items-center gap-2 mb-6" onClick={e => e.stopPropagation()}>
                           <div className="relative flex-1">
                             <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input 
                               type="text" 
                               placeholder="粘贴文章或竞品链接..." 
-                              className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-zenith-accent/50 focus:ring-2 focus:ring-zenith-accent/10 transition-all text-slate-700 placeholder:text-slate-400"
+                              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-zenith-accent/50 focus:ring-2 focus:ring-zenith-accent/10 transition-all text-slate-700 placeholder:text-slate-400"
                               value={linkInput}
                               onChange={e => setLinkInput(e.target.value)}
                               onKeyDown={e => { if (e.key === 'Enter' && linkInput) handleLinkSubmit(); }}
@@ -915,35 +970,93 @@ export default function App() {
                           <button 
                             onClick={handleLinkSubmit}
                             disabled={!linkInput}
-                            className="px-4 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                            className="px-4 py-2.5 bg-zenith-accent text-white text-xs font-bold rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                           >
                             提取
                           </button>
                         </div>
+
+                        {/* Target Fill Tags */}
+                        <div className="w-full mt-auto">
+                          <p className="text-[10px] text-slate-400 mb-2 uppercase tracking-wider font-bold text-left">AI 将自动填充</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {['核心身份', '用户故事', '竞品格局', '用户画像'].map(tag => (
+                              <span key={tag} className="px-2.5 py-1 bg-zenith-accent/5 border border-zenith-accent/15 rounded-lg text-[10px] text-zenith-accent font-medium">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     )}
                     {uploadState === 'uploading' && (
-                      <div className="space-y-4 flex flex-col items-center">
-                        <div className="w-8 h-8 border-2 border-zenith-accent border-t-transparent rounded-full animate-spin"></div>
-                        <p className="text-sm font-medium text-slate-600">正在解析资产并提取逻辑...</p>
+                      <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                        <div className="relative">
+                          <div className="w-16 h-16 border-2 border-zenith-accent/20 rounded-full"></div>
+                          <div className="absolute inset-0 w-16 h-16 border-2 border-zenith-accent border-t-transparent rounded-full animate-spin"></div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <BrainCircuit size={20} className="text-zenith-accent" />
+                          </div>
+                        </div>
+                        <div className="space-y-2 text-center">
+                          <p className="text-sm font-bold text-slate-900">AI 正在分析资产</p>
+                          <p className="text-xs text-slate-400">正在提取核心信息并填充各模块...</p>
+                        </div>
+                        <div className="flex gap-2">
+                          {['核心身份', '用户故事', '竞品格局', '用户画像'].map((tag, i) => (
+                            <motion.span 
+                              key={tag}
+                              initial={{ opacity: 0.3 }}
+                              animate={{ opacity: [0.3, 1, 0.3] }}
+                              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
+                              className="px-2 py-0.5 bg-zenith-accent/10 rounded-md text-[9px] text-zenith-accent font-medium"
+                            >{tag}</motion.span>
+                          ))}
+                        </div>
                       </div>
                     )}
                     {uploadState === 'success' && (
-                      <div className="space-y-6 flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-2">
-                          <CheckCircle2 size={28} className="text-emerald-500" />
-                        </div>
-                        <div className="max-w-xs space-y-2">
-                          <h4 className="text-base font-sans font-bold text-slate-900">解析完成</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">已成功提取核心价值与用户故事。</p>
-                        </div>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setActiveModule('gtm'); }}
-                          className="mt-4 px-6 py-2.5 bg-zenith-accent text-white rounded-full text-sm font-bold shadow-lg shadow-zenith-accent/20 hover:bg-blue-600 transition-colors flex items-center gap-2"
+                      <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                        <motion.div 
+                          initial={{ scale: 0 }} 
+                          animate={{ scale: 1 }}
+                          transition={{ type: 'spring', bounce: 0.4 }}
+                          className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center"
                         >
-                          下一步：GTM 营销布局
-                          <ChevronRight size={16} />
-                        </button>
+                          <CheckCircle2 size={28} className="text-emerald-500" />
+                        </motion.div>
+                        <div className="space-y-2 text-center">
+                          <h4 className="text-base font-bold text-slate-900">解析完成</h4>
+                          <p className="text-xs text-slate-500">已成功填充以下模块</p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 justify-center">
+                          {['核心身份', '用户故事', '竞品格局', '用户画像'].map((tag, i) => (
+                            <motion.span 
+                              key={tag}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.15 }}
+                              className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] text-emerald-600 font-medium flex items-center gap-1"
+                            >
+                              <CheckCircle2 size={10} />
+                              {tag}
+                            </motion.span>
+                          ))}
+                        </div>
+                        <div className="flex gap-3 mt-2">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setUploadState('idle'); }}
+                            className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-medium rounded-xl hover:bg-slate-50 transition-colors"
+                          >
+                            重新上传
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveModule('gtm'); }}
+                            className="px-4 py-2 bg-zenith-accent text-white text-xs font-bold rounded-xl hover:bg-blue-600 transition-colors flex items-center gap-1.5"
+                          >
+                            下一步 <ChevronRight size={14} />
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1010,21 +1123,19 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-4 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full flex flex-col">
-                    <div {...getPanelProps("input-persona", "space-y-6 flex-1 flex flex-col rounded-2xl")}>
-                      <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500 flex items-center gap-3">
-                        <Users size={14} className="text-emerald-500" />
-                        用户画像 / Persona
-                      </h3>
-                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all flex-1 flex flex-col">
-                        <label className="text-[9px] uppercase tracking-widest font-bold text-slate-400 ml-1">用户画像 (User Persona)</label>
-                        <textarea 
-                          value={currentProject?.userPersona}
-                          onChange={(e) => updateCurrentProject({ userPersona: e.target.value })}
-                          className="w-full flex-1 bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none"
-                          placeholder="描述目标用户画像..."
-                        />
-                      </div>
+                  <div {...getPanelProps("input-persona", "lg:col-span-4 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full flex flex-col")}>
+                    <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500 flex items-center gap-3">
+                      <Users size={14} className="text-emerald-500" />
+                      用户画像 / Persona
+                    </h3>
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 focus-within:border-zenith-accent/30 focus-within:bg-white transition-all flex-1 flex flex-col">
+                      <label className="text-[9px] uppercase tracking-widest font-bold text-slate-400 ml-1">用户画像 (User Persona)</label>
+                      <textarea 
+                        value={currentProject?.userPersona}
+                        onChange={(e) => updateCurrentProject({ userPersona: e.target.value })}
+                        className="w-full flex-1 bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none"
+                        placeholder="描述目标用户画像..."
+                      />
                     </div>
                   </div>
                 </div>
@@ -1056,52 +1167,96 @@ export default function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
                   {/* Row 1: Model & ROI */}
                   <div {...getPanelProps("gtm-model", "lg:col-span-7 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500">增长模型选择 / Model Selection</h3>
-                      <div className="flex gap-3">
-                        {['PLG', 'SLG', 'Content'].map(m => (
-                          <div key={m} className="relative group">
-                            <button 
-                              onClick={() => updateCurrentProject({ gtmModel: m as any })}
-                              className={`px-5 py-2 rounded-full text-[10px] font-bold transition-all ${currentProject?.gtmModel === m ? 'bg-zenith-accent text-white shadow-lg shadow-zenith-accent/20' : 'bg-slate-100 text-slate-500 hover:text-slate-900'}`}
-                            >
-                              {m}
-                            </button>
-                            {m === 'PLG' && (
-                              <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-64 bg-slate-900 text-white text-xs font-normal leading-relaxed p-4 rounded-2xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-50 shadow-2xl">
-                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900 rotate-45 rounded-sm"></div>
-                                <div className="relative z-10">将产品本身打造为获客、转化与留存的核心引擎，通过让用户“先体验价值，后付费订阅”来实现低成本的病毒式增长</div>
-                              </div>
-                            )}
-                            {m === 'SLG' && (
-                              <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-64 bg-slate-900 text-white text-xs font-normal leading-relaxed p-4 rounded-2xl opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-50 shadow-2xl">
-                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900 rotate-45 rounded-sm"></div>
-                                <div className="relative z-10">依靠销售团队的主动触达、深度演示与一对一谈判，针对高客单价或复杂需求客户实现精准获客与价值转化。</div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
+                      <div className="space-y-3">
+                        <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
+                          <Compass size={12} className="text-zenith-accent" />增长模型 / Growth Model
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {['PLG', 'SLG', 'Content'].map(m => (
+                            <button key={m} onClick={() => updateCurrentProject({ gtmModel: m as any })} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${currentProject?.gtmModel === m ? 'bg-zenith-accent text-white shadow-md shadow-zenith-accent/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{m}</button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
+                          <Target size={12} className="text-indigo-500" />目标客群 / Target Market
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { id: 'B2C', label: '大众 (B2C)' },
+                            { id: 'SMB', label: '中小企 (SMB)' },
+                            { id: 'MidMarket', label: '中大型 (Mid-Market)' },
+                            { id: 'Enterprise', label: '超大型 (Enterprise)' }
+                          ].map(t => (
+                            <button key={t.id} onClick={() => updateCurrentProject({ targetMarket: t.id as any })} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentProject?.targetMarket === t.id ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{t.label}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
+                          <DollarSign size={12} className="text-amber-500" />定价策略 / Pricing
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { id: 'Freemium', label: '免费增值' },
+                            { id: 'FreeTrial', label: '免费试用' },
+                            { id: 'Tiered', label: '分级订阅' },
+                            { id: 'PayAsYouGo', label: '按量付费' }
+                          ].map(p => (
+                            <button key={p.id} onClick={() => updateCurrentProject({ pricingModel: p.id as any })} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentProject?.pricingModel === p.id ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{p.label}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
+                          <Activity size={12} className="text-rose-500" />销售周期 / Sales Cycle
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { id: 'Short', label: '短 (<1周)' },
+                            { id: 'Medium', label: '中 (1-3月)' },
+                            { id: 'Long', label: '长 (>6月)' }
+                          ].map(s => (
+                            <button key={s.id} onClick={() => updateCurrentProject({ salesCycle: s.id as any })} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentProject?.salesCycle === s.id ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20' : 'bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>{s.label}</button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="space-y-12">
+                    <div className="space-y-10 pt-4">
                       <GtmSlider 
-                        label="内容营销" 
+                        label="内容营销 (Content)" 
                         value={currentProject?.gtmStrategy.contentMarketing || 0} 
                         onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: v } })}
                         color="bg-emerald-400"
                       />
                       <GtmSlider 
-                        label="付费投放" 
+                        label="付费投放 (Paid Ads)" 
                         value={currentProject?.gtmStrategy.paidAds || 0} 
                         onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: v } })}
                         color="bg-blue-400"
                       />
                       <GtmSlider 
-                        label="推荐与裂变" 
+                        label="推荐与裂变 (Referral)" 
                         value={currentProject?.gtmStrategy.referral || 0} 
                         onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: v } })}
                         color="bg-purple-400"
+                      />
+                      <GtmSlider 
+                        label="主动出击 (Outbound Sales)" 
+                        value={currentProject?.gtmStrategy.outboundSales || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, outboundSales: v } })}
+                        color="bg-amber-400"
+                      />
+                      <GtmSlider 
+                        label="自然搜索 (SEO / ASO)" 
+                        value={currentProject?.gtmStrategy.seoAso || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: v } })}
+                        color="bg-cyan-400"
                       />
                     </div>
                   </div>
@@ -1126,6 +1281,8 @@ export default function App() {
                               { name: '内容营销', value: currentProject?.gtmStrategy.contentMarketing || 0 },
                               { name: '付费投放', value: currentProject?.gtmStrategy.paidAds || 0 },
                               { name: '推荐与裂变', value: currentProject?.gtmStrategy.referral || 0 },
+                              { name: '主动出击', value: currentProject?.gtmStrategy.outboundSales || 0 },
+                              { name: '自然搜索', value: currentProject?.gtmStrategy.seoAso || 0 },
                             ]}
                             cx="50%"
                             cy="50%"
@@ -1134,23 +1291,31 @@ export default function App() {
                             paddingAngle={5}
                             dataKey="value"
                           >
-                            <Cell fill="#10b981" />
-                            <Cell fill="#3b82f6" />
-                            <Cell fill="#a855f7" />
+                            <Cell fill="#34d399" />
+                            <Cell fill="#60a5fa" />
+                            <Cell fill="#c084fc" />
+                            <Cell fill="#fbbf24" />
+                            <Cell fill="#22d3ee" />
                           </Pie>
                           <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', fontSize: '12px', color: '#0f172a' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="flex justify-center gap-6">
-                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500" /> 内容
+                    <div className="flex justify-center flex-wrap gap-4 mt-2">
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400" /> 内容
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                        <div className="w-2 h-2 rounded-full bg-blue-500" /> 付费
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                        <div className="w-2 h-2 rounded-full bg-blue-400" /> 付费
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                        <div className="w-2 h-2 rounded-full bg-purple-500" /> 推荐
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                        <div className="w-2 h-2 rounded-full bg-purple-400" /> 裂变
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                        <div className="w-2 h-2 rounded-full bg-amber-400" /> 主动
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                        <div className="w-2 h-2 rounded-full bg-cyan-400" /> 搜索
                       </div>
                     </div>
                   </div>
@@ -1180,7 +1345,16 @@ export default function App() {
                       </div>
                     </div>
                     <div className="glass-panel p-8 space-y-5 h-full">
-                      <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600">LTV / CAC 预估</label>
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600">LTV / CAC 预估</label>
+                        <div className="group/tooltip relative">
+                          <div className="w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[8px] cursor-help font-bold hover:bg-slate-300 transition-colors">?</div>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity z-50 shadow-lg font-normal tracking-wide">
+                            赚钱效率
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                          </div>
+                        </div>
+                      </div>
                       <div className="flex items-end gap-5">
                         <span className="text-4xl font-sans font-bold text-slate-900">{currentProject?.gtmStrategy.ltvCac}x</span>
                         <span className="text-xs text-emerald-400 mb-1.5">Healthy</span>
@@ -1506,19 +1680,19 @@ function SidebarItem({
           {active && (
             <motion.div 
               layoutId="activeNav"
-              className="absolute inset-0 bg-slate-900 z-0"
+              className="absolute inset-0 bg-slate-100/70 backdrop-blur-xl border border-white/80 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.05)] rounded-2xl z-0 dark:bg-slate-800/80 dark:border-slate-700/50"
               transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
             />
           )}
-          <span className={`${active ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'} transition-colors relative z-10`}>
+          <span className={`${active ? 'text-zenith-accent' : 'text-slate-400 group-hover:text-slate-900'} transition-colors relative z-10`}>
             {icon}
           </span>
-          <span className="text-sm font-medium relative z-10">{label}</span>
+          <span className="text-sm relative z-10">{label}</span>
           {active && (
             <motion.div 
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="w-1 h-1 rounded-full bg-white ml-auto relative z-10"
+              className="w-1.5 h-1.5 rounded-full bg-zenith-accent ml-auto relative z-10 shadow-sm shadow-zenith-accent/40"
             />
           )}
         </button>
@@ -1560,10 +1734,21 @@ function SidebarItem({
   );
 }
 
-function StatCard({ label, value, trend, negative }: { label: string, value: string, trend: string, negative?: boolean }) {
+function StatCard({ label, value, trend, negative, tooltip }: { label: string, value: string, trend: string, negative?: boolean, tooltip?: string }) {
   return (
     <div className="glass-panel p-8 hover:bg-slate-50 transition-colors group">
-      <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold mb-3">{label}</p>
+      <div className="flex items-center gap-2 mb-3">
+        <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold">{label}</p>
+        {tooltip && (
+          <div className="group/tooltip relative">
+            <div className="w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[8px] cursor-help font-bold hover:bg-slate-300 transition-colors">?</div>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity z-50 shadow-lg font-normal tracking-wide">
+              {tooltip}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="flex items-baseline justify-between">
         <h4 className="text-2xl font-sans font-bold text-slate-900">{value}</h4>
         <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${trend === '稳定' ? 'bg-slate-100 text-slate-500' : (negative ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600')}`}>

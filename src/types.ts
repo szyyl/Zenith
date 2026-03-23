@@ -9,10 +9,15 @@ export interface ProductData {
   potentialThreats?: string;
   userPersona: string;
   gtmModel?: 'PLG' | 'SLG' | 'Content';
+  pricingModel?: 'Freemium' | 'FreeTrial' | 'Tiered' | 'PayAsYouGo';
+  targetMarket?: 'B2C' | 'SMB' | 'MidMarket' | 'Enterprise';
+  salesCycle?: 'Short' | 'Medium' | 'Long';
   gtmStrategy: {
     contentMarketing: number;
     paidAds: number;
     referral: number;
+    outboundSales: number;
+    seoAso: number;
     kFactor?: number;
     ltvCac?: number;
   };

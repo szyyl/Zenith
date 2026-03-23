@@ -1,6 +1,7 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY || "UNCONFIGURED_API_KEY";
+const ai = new GoogleGenAI({ apiKey });
 
 export type ModelMode = 'fast' | 'reasoning' | 'creative' | 'long-context';
 

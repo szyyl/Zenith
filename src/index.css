@@ -82,7 +82,7 @@
 }
 
 .nav-item-active {
-  @apply bg-slate-900 dark:bg-slate-800 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)];
+  @apply text-slate-900 font-bold dark:text-white;
 }
 
 .luxury-line {
