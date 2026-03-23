@@ -11,6 +11,8 @@ import {
   ShieldAlert, 
   Activity, 
   FileOutput, 
+  FileInput,
+  Search,
   ChevronRight,
   ChevronDown,
   Settings,
@@ -860,7 +862,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-12 max-w-5xl"
+                className="space-y-12"
               >
                 <div>
                   <h2 className="text-3xl font-sans font-bold tracking-tight text-slate-900">灵感实验室 <span className="text-lg font-sans font-normal text-slate-400 ml-2">Idea Genesis</span></h2>
@@ -944,47 +946,50 @@ export default function App() {
                           多模态资产上传
                         </h4>
 
-                        {/* Upload File Button */}
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                          className="w-full p-5 border-2 border-dashed border-slate-200 rounded-2xl hover:border-zenith-accent/40 hover:bg-zenith-accent/5 transition-all group/upload flex flex-col items-center gap-3 mb-4"
-                        >
-                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover/upload:bg-zenith-accent/10 group-hover/upload:scale-110 transition-all">
-                            <Plus size={20} className="text-slate-400 group-hover/upload:text-zenith-accent transition-colors" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">选择文件上传</p>
-                            <p className="text-[10px] text-slate-400 mt-1">支持 PDF / Markdown / Word / 图片</p>
-                          </div>
-                        </button>
-
-                        {/* Divider */}
-                        <div className="flex items-center w-full mb-4">
-                          <div className="flex-1 h-px bg-slate-200"></div>
-                          <span className="px-3 text-[10px] text-slate-400 uppercase tracking-widest font-bold">或粘贴链接</span>
-                          <div className="flex-1 h-px bg-slate-200"></div>
-                        </div>
-
-                        {/* Paste Link */}
-                        <div className="w-full flex items-center gap-2 mb-6" onClick={e => e.stopPropagation()}>
-                          <div className="relative flex-1">
-                            <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input 
-                              type="text" 
-                              placeholder="粘贴文章或竞品链接..." 
-                              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-zenith-accent/50 focus:ring-2 focus:ring-zenith-accent/10 transition-all text-slate-700 placeholder:text-slate-400"
-                              value={linkInput}
-                              onChange={e => setLinkInput(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter' && linkInput) handleLinkSubmit(); }}
-                            />
-                          </div>
+                        {/* Content Container for even distribution */}
+                        <div className="w-full flex-1 flex flex-col justify-evenly py-2">
+                          {/* Upload File Button */}
                           <button 
-                            onClick={handleLinkSubmit}
-                            disabled={!linkInput}
-                            className="px-4 py-2.5 bg-zenith-accent text-white text-xs font-bold rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                            className="w-full p-8 border-2 border-dashed border-slate-200 rounded-2xl hover:border-zenith-accent/40 hover:bg-zenith-accent/5 transition-all group/upload flex flex-col items-center justify-center gap-3"
                           >
-                            提取
+                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover/upload:bg-zenith-accent/10 group-hover/upload:scale-110 transition-all">
+                              <Plus size={20} className="text-slate-400 group-hover/upload:text-zenith-accent transition-colors" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-700">选择文件上传</p>
+                              <p className="text-[10px] text-slate-400 mt-1">支持 PDF / Markdown / Word / 图片</p>
+                            </div>
                           </button>
+
+                          {/* Divider */}
+                          <div className="flex items-center w-full">
+                            <div className="flex-1 h-px bg-slate-100"></div>
+                            <span className="px-4 text-[10px] text-slate-400 uppercase tracking-widest font-bold">或粘贴链接</span>
+                            <div className="flex-1 h-px bg-slate-100"></div>
+                          </div>
+
+                          {/* Paste Link */}
+                          <div className="w-full flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            <div className="relative flex-1">
+                              <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input 
+                                type="text" 
+                                placeholder="粘贴文章或竞品链接..." 
+                                className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-zenith-accent/50 focus:ring-2 focus:ring-zenith-accent/10 transition-all text-slate-700 placeholder:text-slate-400"
+                                value={linkInput}
+                                onChange={e => setLinkInput(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter' && linkInput) handleLinkSubmit(); }}
+                              />
+                            </div>
+                            <button 
+                              onClick={handleLinkSubmit}
+                              disabled={!linkInput}
+                              className="px-6 py-3 bg-zenith-accent text-white text-xs font-bold rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                            >
+                              提取
+                            </button>
+                          </div>
                         </div>
 
                         {/* Target Fill Tags */}
@@ -1089,10 +1094,20 @@ export default function App() {
                               newStories[i] = e.target.value;
                               updateCurrentProject({ userStories: newStories });
                             }}
-                            className="w-full bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none overflow-hidden"
+                            className="w-full bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none overflow-hidden pr-8"
                             rows={2}
                             placeholder="输入用户故事..."
                           />
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newStories = currentProject?.userStories?.filter((_, index) => index !== i);
+                              updateCurrentProject({ userStories: newStories });
+                            }}
+                            className="absolute right-3 top-3 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
                       ))}
                       <button 
@@ -1329,36 +1344,48 @@ export default function App() {
                       </div>
                     </div>
                     
-                    <div className="space-y-10 pt-4">
-                      <GtmSlider 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-12 border-t border-slate-100/60 relative">
+                      <div className="absolute -top-3 left-0 bg-white px-3 text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">
+                        执行指标 / Execution Metrics
+                      </div>
+                      <GtmMetricInput 
                         label="内容营销 (Content)" 
+                        description="内容营销权重调整"
                         value={currentProject?.gtmStrategy.contentMarketing || 0} 
                         onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: v } })}
-                        color="bg-emerald-400"
+                        icon={<FileInput size={14} className="text-emerald-500" />}
                       />
-                      <GtmSlider 
+                      
+                      <GtmMetricInput 
                         label="付费投放 (Paid Ads)" 
+                        description="我们在社媒上投了多少条广告"
                         value={currentProject?.gtmStrategy.paidAds || 0} 
                         onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: v } })}
-                        color="bg-blue-400"
+                        icon={<Zap size={14} className="text-blue-500" />}
                       />
-                      <GtmSlider 
+                      
+                      <GtmMetricInput 
                         label="推荐与裂变 (Referral)" 
+                        description="通过系统 APP 跳转了多少次"
                         value={currentProject?.gtmStrategy.referral || 0} 
                         onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: v } })}
-                        color="bg-purple-400"
+                        icon={<Users size={14} className="text-purple-500" />}
                       />
-                      <GtmSlider 
+
+                      <GtmMetricInput 
                         label="主动出击 (Outbound Sales)" 
+                        description="用户分享了多少次对应的应用"
                         value={currentProject?.gtmStrategy.outboundSales || 0} 
                         onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, outboundSales: v } })}
-                        color="bg-amber-400"
+                        icon={<Target size={14} className="text-rose-500" />}
                       />
-                      <GtmSlider 
+
+                      <GtmMetricInput 
                         label="自然搜索 (SEO / ASO)" 
+                        description="自然搜索量呈现可数字化"
                         value={currentProject?.gtmStrategy.seoAso || 0} 
                         onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: v } })}
-                        color="bg-cyan-400"
+                        icon={<Search size={14} className="text-indigo-500" />}
                       />
                     </div>
                   </div>
@@ -1949,27 +1976,37 @@ function StatCard({ label, value, trend, negative, tooltip }: { label: string, v
   );
 }
 
-function GtmSlider({ label, value, onChange, color }: { label: string, value: number, onChange: (v: number) => void, color: string }) {
+function GtmMetricInput({ label, description, value, onChange, icon }: { label: string, description: string, value: number, onChange: (v: number) => void, icon: React.ReactNode }) {
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</span>
-        <span className="text-sm font-mono font-bold text-slate-900">{value}%</span>
-      </div>
-      <div className="relative h-2 bg-slate-100 rounded-full">
-        <motion.div 
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          className={`absolute inset-y-0 left-0 rounded-full ${color} shadow-sm`}
-        />
-        <input 
-          type="range" 
-          min="0" 
-          max="100" 
-          value={value} 
-          onChange={(e) => onChange(parseInt(e.target.value))}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-        />
+    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 transition-colors group">
+      <div className="flex justify-between items-start">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            {icon}
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-700">{label}</span>
+          </div>
+          <p className="text-[10px] text-slate-400 font-medium">{description}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => onChange(Math.max(0, value - 1))}
+            className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-zenith-accent hover:border-zenith-accent/30 transition-all shadow-sm active:scale-95"
+          >
+            <span className="text-lg leading-none mt-[-2px]">-</span>
+          </button>
+          <input 
+            type="number" 
+            value={value} 
+            onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+            className="w-16 bg-white border border-slate-200 rounded-lg py-1 px-2 text-sm font-mono font-bold text-center text-slate-900 outline-none focus:border-zenith-accent/50 focus:ring-1 focus:ring-zenith-accent/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <button 
+            onClick={() => onChange(value + 1)}
+            className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-zenith-accent hover:border-zenith-accent/30 transition-all shadow-sm active:scale-95"
+          >
+            <span className="text-lg leading-none mt-[-2px]">+</span>
+          </button>
+        </div>
       </div>
     </div>
   );
