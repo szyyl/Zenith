@@ -1694,7 +1694,7 @@ export default function App() {
                     const barData = [
                       { name: '营收', value: revenue, fill: '#10b981' },
                       { name: '模型成本', value: modelCost, fill: '#f43f5e' },
-                      { name: '营销成本', value: marketingSpend, fill: '#f97316' },
+                      { name: '营销成本', value: marketingSpend, fill: '#f43f5e' },
                     ];
 
                     return (
@@ -1754,7 +1754,7 @@ export default function App() {
                             <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">预估月活 MAU</p>
                               <div className="flex items-baseline gap-1">
-                                <span className="text-xl font-sans font-bold text-emerald-600">{formatNum(estMau)}</span>
+                                <span className="text-xl font-sans font-bold text-emerald-500">{formatNum(estMau)}</span>
                                 <span className="text-[9px] text-slate-400">用户</span>
                               </div>
                               <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
@@ -1766,7 +1766,7 @@ export default function App() {
                             <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">营销总花费</p>
                               <div className="flex items-baseline gap-1">
-                                <span className="text-xl font-sans font-bold text-amber-500">{formatUSD(marketingSpend)}</span>
+                                <span className="text-xl font-sans font-bold text-rose-500">{formatUSD(marketingSpend)}</span>
                                 <span className="text-[9px] text-slate-400">/月</span>
                               </div>
                               <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
@@ -1778,7 +1778,7 @@ export default function App() {
                             <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">预估运营毛利</p>
                               <div className="flex items-baseline gap-1">
-                                <span className={`text-xl font-sans font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatUSD(profit)}</span>
+                                <span className={`text-xl font-sans font-bold ${profit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{formatUSD(profit)}</span>
                                 <span className="text-[9px] text-slate-400">/月</span>
                               </div>
                               <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
