@@ -1478,6 +1478,40 @@ export default function App() {
                         />
                       </div>
 
+                      {/* GTM Sync -> Estimated MAU */}
+                      {(() => {
+                        const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
+                        const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
+                        const referralVol = currentProject?.gtmStrategy.referral?.volume || 0;
+                        const seoVol = currentProject?.gtmStrategy.seoAso?.volume || 0;
+                        const adsCvr = currentProject?.gtmStrategy.paidAds?.cvr || 5;
+                        const refCvr = currentProject?.gtmStrategy.referral?.cvr || 10;
+                        const kFactor = currentProject?.gtmStrategy.viral?.kFactor || 1.2;
+                        
+                        const adsInstalls = Math.floor(adsVol * 2500 * (adsCvr / 100));
+                        const seoInstalls = Math.floor(seoVol * 500 * 0.08);
+                        const referralInstalls = Math.floor(referralVol * (refCvr / 100));
+                        const directInstalls = adsInstalls + seoInstalls + referralInstalls;
+                        const estMau = Math.floor(directInstalls * kFactor);
+                        
+                        return (
+                          <div className="mb-6 p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-400">预估月活 (基于GTM)</span>
+                              <button 
+                                onClick={() => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, targetMau: estMau } as any })}
+                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline underline-offset-2 transition-colors"
+                              >
+                                同步到目标
+                              </button>
+                            </div>
+                            <div className="text-xl font-sans font-bold text-indigo-600">
+                              {estMau.toLocaleString()} <span className="text-xs font-normal text-indigo-400 uppercase ml-1">MAU</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* Target MAU */}
                       <div>
                         <label className="text-xs font-bold text-slate-500 mb-3 block">目标月活 (MAU)</label>
