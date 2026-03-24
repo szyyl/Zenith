@@ -75,24 +75,26 @@ import {
   TARGET_MARKET_COUNTRIES,
 } from './appConfig';
 import {createShortId, downloadTextFile, toCsvCell} from './appUtils';
+import {
+  computeGtmProjection,
+  formatCompactNumber,
+  formatUsd,
+} from './gtmMetrics';
+import {
+  GtmMetricInput,
+  MetricCard,
+  RiskCell,
+  ScoreDetail,
+  SidebarItem,
+  StatCard,
+} from './uiComponents';
 
-const ScoreDetail = ({ label, score, desc }: { label: string, score: number, desc: string }) => (
-  <div className="space-y-2">
-    <div className="flex justify-between items-end">
-      <span className="text-sm font-sans font-semibold text-slate-900">{label}</span>
-      <span className="text-lg font-mono font-bold text-zenith-accent">{score}</span>
-    </div>
-    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: `${score}%` }}
-        transition={{ duration: 1, ease: "easeOut" }}
-        className="h-full bg-zenith-accent"
-      />
-    </div>
-    <p className="text-[10px] text-slate-500 leading-relaxed italic">{desc}</p>
-  </div>
-);
+type GtmEditableChannel =
+  | 'contentMarketing'
+  | 'paidAds'
+  | 'referral'
+  | 'viral'
+  | 'seoAso';
 
 export default function App() {
   const [state, setState] = useState<AppState>({
@@ -106,6 +108,8 @@ export default function App() {
   });
 
   const currentProject = state.projects.find(p => p.id === state.currentProjectId) || state.projects[0];
+  const latestSimulation = state.simulations[0];
+  const gtmProjection = computeGtmProjection(currentProject);
   const advisorSessionId = useRef(createShortId(5).toUpperCase()).current;
 
   const updateCurrentProject = (updates: Partial<ProductData>) => {
@@ -113,6 +117,81 @@ export default function App() {
       ...s,
       projects: s.projects.map(p => p.id === s.currentProjectId ? { ...p, ...updates } : p)
     }));
+  };
+
+  const updateTargetMarket = (updates: Partial<ProductData['targetMarket']>) => {
+    if (!currentProject) return;
+    updateCurrentProject({
+      targetMarket: {
+        ...currentProject.targetMarket,
+        ...updates,
+      },
+    });
+  };
+
+  const updateCostStructure = (
+    updates: Partial<NonNullable<ProductData['costStructure']>>,
+  ) => {
+    if (!currentProject?.costStructure) return;
+    updateCurrentProject({
+      costStructure: {
+        ...currentProject.costStructure,
+        ...updates,
+      },
+    });
+  };
+
+  const updateGtmStrategy = (updates: Partial<ProductData['gtmStrategy']>) => {
+    if (!currentProject) return;
+    updateCurrentProject({
+      gtmStrategy: {
+        ...currentProject.gtmStrategy,
+        ...updates,
+      },
+    });
+  };
+
+  const updateGtmChannel = (
+    channel: GtmEditableChannel,
+    updates: Partial<ProductData['gtmStrategy'][GtmEditableChannel]>,
+  ) => {
+    const currentChannel = currentProject?.gtmStrategy[channel];
+    if (!currentChannel || typeof currentChannel !== 'object') return;
+
+    updateGtmStrategy({
+      [channel]: {
+        ...currentChannel,
+        ...updates,
+      },
+    } as Partial<ProductData['gtmStrategy']>);
+  };
+
+  const updateUserStory = (index: number, value: string) => {
+    const nextStories = [...(currentProject?.userStories || [])];
+    nextStories[index] = value;
+    updateCurrentProject({userStories: nextStories});
+  };
+
+  const removeUserStory = (index: number) => {
+    updateCurrentProject({
+      userStories: currentProject?.userStories?.filter((_, i) => i !== index),
+    });
+  };
+
+  const addUserStory = () => {
+    updateCurrentProject({
+      userStories: [...(currentProject?.userStories || []), ''],
+    });
+  };
+
+  const navigateToModule = (
+    module: AppState['activeModule'],
+    options?: {scrollToTop?: boolean},
+  ) => {
+    if (options?.scrollToTop) {
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+    setActiveModule(module);
   };
 
   const setActiveSubModule = (subModule: string) => {
@@ -256,6 +335,20 @@ export default function App() {
   const [advisorChat, setAdvisorChat] = useState<{role: string, content: string}[]>([]);
   const [chatInput, setChatInput] = useState("");
 
+  const runWithSimulationState = async (
+    task: () => Promise<void>,
+    errorLabel: string,
+  ) => {
+    setState(prev => ({...prev, isSimulating: true}));
+    try {
+      await task();
+    } catch (error) {
+      console.error(errorLabel, error);
+    } finally {
+      setState(prev => ({...prev, isSimulating: false}));
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
     
@@ -268,24 +361,17 @@ export default function App() {
   };
 
   const handleGenerateScenarios = async () => {
-    setState(prev => ({ ...prev, isSimulating: true }));
-    try {
-      const gtmData = currentProject;
-      const newScenarios = await generateSimulationScenarios(gtmData);
-      setState(prev => ({ 
-        ...prev, 
+    await runWithSimulationState(async () => {
+      const newScenarios = await generateSimulationScenarios(currentProject);
+      setState(prev => ({
+        ...prev,
         scenarios: newScenarios,
-        isSimulating: false 
       }));
-    } catch (error) {
-      console.error("Scenario generation failed:", error);
-      setState(prev => ({ ...prev, isSimulating: false }));
-    }
+    }, 'Scenario generation failed:');
   };
 
   const runSimulation = async (scenario: string) => {
-    setState(prev => ({ ...prev, isSimulating: true }));
-    try {
+    await runWithSimulationState(async () => {
       const resultText = await runSandboxSimulation(scenario, currentProject);
       
       // Extract recommendations from AI response
@@ -307,12 +393,8 @@ export default function App() {
       setState(prev => ({
         ...prev,
         simulations: [newSim, ...prev.simulations],
-        isSimulating: false
       }));
-    } catch (error) {
-      console.error("Simulation failed:", error);
-      setState(prev => ({ ...prev, isSimulating: false }));
-    }
+    }, 'Simulation failed:');
   };
 
   const downloadSimulationJson = (simulation: SimulationResult) => {
@@ -548,13 +630,13 @@ export default function App() {
                         key={scenario.id}
                         onClick={() => runSimulation(scenario.title)}
                         disabled={state.isSimulating}
-                        className={`text-left p-6 rounded-3xl border transition-all duration-300 group relative overflow-hidden flex flex-col justify-between h-full bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 ${state.simulations[0]?.scenario === scenario.title ? 'border-zenith-accent ring-2 ring-zenith-accent/20' : 'border-slate-100'}`}
+                        className={`text-left p-6 rounded-3xl border transition-all duration-300 group relative overflow-hidden flex flex-col justify-between h-full bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 ${latestSimulation?.scenario === scenario.title ? 'border-zenith-accent ring-2 ring-zenith-accent/20' : 'border-slate-100'}`}
                       >
                         <div className="relative z-10 space-y-4">
                           <div className="flex justify-between items-start">
                             <h4 className="font-bold text-slate-900 line-clamp-1">{scenario.title}</h4>
-                            <div className={`px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-widest ${state.simulations[0]?.scenario === scenario.title ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-colors'}`}>
-                              {state.simulations[0]?.scenario === scenario.title ? '已推演' : '待激活'}
+                            <div className={`px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-widest ${latestSimulation?.scenario === scenario.title ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-colors'}`}>
+                              {latestSimulation?.scenario === scenario.title ? '已推演' : '待激活'}
                             </div>
                           </div>
                           
@@ -594,11 +676,11 @@ export default function App() {
                             <div className="p-2 bg-indigo-50 rounded-xl">
                               <Activity size={18} className="text-indigo-600" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900">推演深度分析：{state.simulations[0].scenario}</h3>
+                            <h3 className="text-lg font-bold text-slate-900">推演深度分析：{latestSimulation?.scenario}</h3>
                           </div>
                           
                           <div className="prose prose-sm max-w-none text-slate-600 leading-relaxed min-h-[400px]">
-                            <ReactMarkdown>{state.simulations[0].outcome}</ReactMarkdown>
+                            <ReactMarkdown>{latestSimulation?.outcome || ''}</ReactMarkdown>
                           </div>
                         </div>
 
@@ -637,7 +719,7 @@ export default function App() {
                           </div>
                           <h4 className="text-xs font-bold uppercase tracking-[0.3em] text-white/50">核心博弈对策</h4>
                           <div className="space-y-4">
-                            {state.simulations[0].recommendations?.slice(0, 3).map((rec, i) => (
+                            {latestSimulation?.recommendations?.slice(0, 3).map((rec, i) => (
                               <div key={i} className="flex gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
                                 <span className="text-zenith-accent font-bold">0{i+1}</span>
                                 <p className="text-xs text-white/90 leading-relaxed">{rec}</p>
@@ -654,10 +736,7 @@ export default function App() {
 
                     <div className="flex justify-end pt-12">
                       <button
-                        onClick={() => {
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                          setState(s => ({ ...s, activeModule: 'diagnostics' }));
-                        }}
+                        onClick={() => navigateToModule('diagnostics', {scrollToTop: true})}
                         className="group flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all shadow-xl hover:shadow-zenith-accent/20"
                       >
                         下一步：诊断与评分
@@ -784,12 +863,12 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4">
-                  <button
-                    onClick={() => setState(s => ({ ...s, activeModule: 'input' }))}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
-                  >
-                    重新开始：灵感实验室 <ArrowRight size={16} />
+                  <div className="flex justify-end pt-4">
+                    <button
+                      onClick={() => navigateToModule('input')}
+                      className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
+                    >
+                      重新开始：灵感实验室 <ArrowRight size={16} />
                   </button>
                 </div>
               </motion.div>
@@ -1006,7 +1085,7 @@ export default function App() {
                             重新上传
                           </button>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveModule('gtm'); }}
+                            onClick={(e) => { e.stopPropagation(); navigateToModule('gtm'); }}
                             className="px-4 py-2 bg-zenith-accent text-white text-xs font-bold rounded-xl hover:bg-blue-600 transition-colors flex items-center gap-1.5"
                           >
                             下一步 <ChevronRight size={14} />
@@ -1028,11 +1107,7 @@ export default function App() {
                           <CheckCircle2 size={14} className="text-emerald-500 mt-1 flex-shrink-0" />
                           <textarea 
                             value={story}
-                            onChange={(e) => {
-                              const newStories = [...(currentProject?.userStories || [])];
-                              newStories[i] = e.target.value;
-                              updateCurrentProject({ userStories: newStories });
-                            }}
+                            onChange={(e) => updateUserStory(i, e.target.value)}
                             className="w-full bg-transparent border-none outline-none text-sm font-medium leading-relaxed text-slate-900 placeholder:text-slate-300 resize-none overflow-hidden pr-8"
                             rows={2}
                             placeholder="输入用户故事..."
@@ -1040,8 +1115,7 @@ export default function App() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              const newStories = currentProject?.userStories?.filter((_, index) => index !== i);
-                              updateCurrentProject({ userStories: newStories });
+                              removeUserStory(i);
                             }}
                             className="absolute right-3 top-3 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                           >
@@ -1052,7 +1126,7 @@ export default function App() {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          updateCurrentProject({ userStories: [...(currentProject?.userStories || []), ""] });
+                          addUserStory();
                         }}
                         className="w-full py-3 border border-dashed border-slate-200 rounded-xl text-xs text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
                       >
@@ -1107,7 +1181,7 @@ export default function App() {
 
                 <div className="flex justify-end pt-4">
                   <button
-                    onClick={() => setState(s => ({ ...s, activeModule: 'gtm' }))}
+                    onClick={() => navigateToModule('gtm')}
                     className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
                   >
                     下一步：GTM 营销布局 <ArrowRight size={16} />
@@ -1162,7 +1236,7 @@ export default function App() {
                             list="countries-list"
                             placeholder="搜索国家/地区..." 
                             value={currentProject?.targetMarket?.country || ''} 
-                            onChange={e => updateCurrentProject({ targetMarket: { ...currentProject!.targetMarket, country: e.target.value } })}
+                            onChange={e => updateTargetMarket({ country: e.target.value })}
                             className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full shadow-sm transition-all"
                           />
                           <datalist id="countries-list">
@@ -1173,19 +1247,19 @@ export default function App() {
                           <input 
                             placeholder="年龄段..." 
                             value={currentProject?.targetMarket?.age || ''} 
-                            onChange={e => updateCurrentProject({ targetMarket: { ...currentProject!.targetMarket, age: e.target.value } })}
+                            onChange={e => updateTargetMarket({ age: e.target.value })}
                             className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full"
                           />
                           <input 
                             placeholder="职业..." 
                             value={currentProject?.targetMarket?.occupation || ''} 
-                            onChange={e => updateCurrentProject({ targetMarket: { ...currentProject!.targetMarket, occupation: e.target.value } })}
+                            onChange={e => updateTargetMarket({ occupation: e.target.value })}
                             className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full"
                           />
                           <input 
                             placeholder="收入范围 (USD/月)..." 
                             value={currentProject?.targetMarket?.income || ''} 
-                            onChange={e => updateCurrentProject({ targetMarket: { ...currentProject!.targetMarket, income: e.target.value } })}
+                            onChange={e => updateTargetMarket({ income: e.target.value })}
                             className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full"
                           />
                         </div>
@@ -1232,7 +1306,7 @@ export default function App() {
                         label="内容营销 (Content)" 
                         description="内容营销投入资源"
                         value={currentProject?.gtmStrategy.contentMarketing?.volume || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: { ...currentProject!.gtmStrategy.contentMarketing, volume: v } } })}
+                        onChange={(v) => updateGtmChannel('contentMarketing', { volume: v })}
                         icon={<FileInput size={14} className="text-emerald-500" />}
                       />
                       
@@ -1241,15 +1315,13 @@ export default function App() {
                         description="我们将获得多少付费流量？相关增长模型将自动生成辅助指标"
                         value={currentProject?.gtmStrategy.paidAds?.volume || 0} 
                         onChange={(v) => {
-                          const gtm = currentProject!.gtmStrategy;
-                          updateCurrentProject({ 
-                            gtmStrategy: { 
-                              ...gtm, 
-                              paidAds: { ...gtm.paidAds, volume: v },
-                              referral: { ...gtm.referral, volume: Math.floor(v * 0.15) },
-                              viral: { ...gtm.viral, volume: Math.floor(v * 0.3) },
-                              seoAso: { ...gtm.seoAso, volume: Math.floor(v * 0.2) }
-                            } 
+                          if (!currentProject) return;
+                          const gtm = currentProject.gtmStrategy;
+                          updateGtmStrategy({
+                            paidAds: { ...gtm.paidAds, volume: v },
+                            referral: { ...gtm.referral, volume: Math.floor(v * 0.15) },
+                            viral: { ...gtm.viral, volume: Math.floor(v * 0.3) },
+                            seoAso: { ...gtm.seoAso, volume: Math.floor(v * 0.2) },
                           });
                         }}
                         icon={<Zap size={14} className="text-blue-500" />}
@@ -1257,130 +1329,114 @@ export default function App() {
 
                       {/* 营销花费模块 / Marketing Spend */}
                       <div className="md:col-span-2 pt-0 mb-0">
-                        {(() => {
-                          const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
-                          const contentCost = currentProject?.gtmStrategy.contentMarketing?.unitCost || 0;
-                          const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
-                          const adsCost = currentProject?.gtmStrategy.paidAds?.unitCost || 0;
-                          const contentTotal = contentVol * contentCost;
-                          const adsTotal = adsVol * adsCost;
-                          const totalSpend = contentTotal + adsTotal;
-                          const contentPct = totalSpend > 0 ? Math.round((contentTotal / totalSpend) * 100) : 0;
-                          const adsPct = totalSpend > 0 ? Math.round((adsTotal / totalSpend) * 100) : 0;
-
-                          const formatUSD = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
-
-                          return (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Content Marketing Cost */}
-                              <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
-                                <div className="w-[64px] h-[64px] flex-shrink-0">
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                      <Pie
-                                        data={[
-                                          { name: '内容营销', value: contentTotal || 1 },
-                                          { name: '剩余', value: totalSpend > 0 ? Math.max(0, totalSpend - contentTotal) : 1 },
-                                        ]}
-                                        cx="50%" cy="50%"
-                                        innerRadius={22} outerRadius={30}
-                                        startAngle={90} endAngle={-270}
-                                        dataKey="value"
-                                        stroke="none"
-                                      >
-                                        <Cell fill="#10b981" />
-                                        <Cell fill="#e2e8f0" />
-                                      </Pie>
-                                    </PieChart>
-                                  </ResponsiveContainer>
-                                </div>
-                                <div className="text-left py-1">
-                                  <h4 className="text-[11px] font-bold text-slate-800 leading-tight">内容营销花费</h4>
-                                  <p className="text-[9px] text-slate-400 mb-1 leading-tight">Content Marketing</p>
-                                  <div className="flex items-baseline gap-1.5">
-                                    <span className="text-base font-sans font-bold text-emerald-600 leading-tight">{formatUSD(contentTotal)}</span>
-                                    <span className="text-[9px] text-slate-400 font-mono font-medium">{contentVol}条</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Paid Ads Cost */}
-                              <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
-                                <div className="w-[64px] h-[64px] flex-shrink-0">
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                      <Pie
-                                        data={[
-                                          { name: '付费投放', value: adsTotal || 1 },
-                                          { name: '剩余', value: totalSpend > 0 ? Math.max(0, totalSpend - adsTotal) : 1 },
-                                        ]}
-                                        cx="50%" cy="50%"
-                                        innerRadius={22} outerRadius={30}
-                                        startAngle={90} endAngle={-270}
-                                        dataKey="value"
-                                        stroke="none"
-                                      >
-                                        <Cell fill="#3b82f6" />
-                                        <Cell fill="#e2e8f0" />
-                                      </Pie>
-                                    </PieChart>
-                                  </ResponsiveContainer>
-                                </div>
-                                <div className="text-left py-1">
-                                  <h4 className="text-[11px] font-bold text-slate-800 leading-tight">付费投放花费</h4>
-                                  <p className="text-[9px] text-slate-400 mb-1 leading-tight">Paid Ads</p>
-                                  <div className="flex items-baseline gap-1.5">
-                                    <span className="text-base font-sans font-bold text-blue-600 leading-tight">{formatUSD(adsTotal)}</span>
-                                    <span className="text-[9px] text-slate-400 font-mono font-medium">{adsVol}条</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Total Spend Summary */}
-                              <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
-                                <div className="w-[64px] h-[64px] flex-shrink-0">
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                      <Pie
-                                        data={totalSpend > 0 ? [
-                                          { name: '内容营销', value: contentTotal },
-                                          { name: '付费投放', value: adsTotal },
-                                        ] : [{ name: '无数据', value: 1 }]}
-                                        cx="50%" cy="50%"
-                                        innerRadius={22} outerRadius={30}
-                                        startAngle={90} endAngle={-270}
-                                        paddingAngle={totalSpend > 0 ? 3 : 0}
-                                        dataKey="value"
-                                        stroke="none"
-                                      >
-                                        {totalSpend > 0 ? (
-                                          <>
-                                            <Cell fill="#10b981" />
-                                            <Cell fill="#3b82f6" />
-                                          </>
-                                        ) : (
-                                          <Cell fill="#cbd5e1" />
-                                        )}
-                                      </Pie>
-                                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '10px', color: '#0f172a' }} />
-                                    </PieChart>
-                                  </ResponsiveContainer>
-                                </div>
-                                <div className="text-left py-1">
-                                  <h4 className="text-[11px] font-bold text-slate-800 leading-tight">营销总花费</h4>
-                                  <p className="text-[9px] text-slate-400 mb-1 leading-tight">Total Marketing Spend</p>
-                                  <span className="text-base font-sans font-bold text-slate-900 leading-tight">{formatUSD(totalSpend)}</span>
-                                  {totalSpend > 0 && (
-                                    <div className="mt-1 flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                                      <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{contentPct}%</span>
-                                      <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{adsPct}%</span>
-                                    </div>
-                                  )}
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {/* Content Marketing Cost */}
+                          <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
+                            <div className="w-[64px] h-[64px] flex-shrink-0">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={[
+                                      { name: '内容营销', value: gtmProjection.contentSpend || 1 },
+                                      { name: '剩余', value: gtmProjection.totalMarketingSpend > 0 ? Math.max(0, gtmProjection.totalMarketingSpend - gtmProjection.contentSpend) : 1 },
+                                    ]}
+                                    cx="50%" cy="50%"
+                                    innerRadius={22} outerRadius={30}
+                                    startAngle={90} endAngle={-270}
+                                    dataKey="value"
+                                    stroke="none"
+                                  >
+                                    <Cell fill="#10b981" />
+                                    <Cell fill="#e2e8f0" />
+                                  </Pie>
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="text-left py-1">
+                              <h4 className="text-[11px] font-bold text-slate-800 leading-tight">内容营销花费</h4>
+                              <p className="text-[9px] text-slate-400 mb-1 leading-tight">Content Marketing</p>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-base font-sans font-bold text-emerald-600 leading-tight">{formatUsd(gtmProjection.contentSpend)}</span>
+                                <span className="text-[9px] text-slate-400 font-mono font-medium">{gtmProjection.contentVolume}条</span>
                               </div>
                             </div>
-                          );
-                        })()}
+                          </div>
+
+                          {/* Paid Ads Cost */}
+                          <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
+                            <div className="w-[64px] h-[64px] flex-shrink-0">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={[
+                                      { name: '付费投放', value: gtmProjection.adsSpend || 1 },
+                                      { name: '剩余', value: gtmProjection.totalMarketingSpend > 0 ? Math.max(0, gtmProjection.totalMarketingSpend - gtmProjection.adsSpend) : 1 },
+                                    ]}
+                                    cx="50%" cy="50%"
+                                    innerRadius={22} outerRadius={30}
+                                    startAngle={90} endAngle={-270}
+                                    dataKey="value"
+                                    stroke="none"
+                                  >
+                                    <Cell fill="#3b82f6" />
+                                    <Cell fill="#e2e8f0" />
+                                  </Pie>
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="text-left py-1">
+                              <h4 className="text-[11px] font-bold text-slate-800 leading-tight">付费投放花费</h4>
+                              <p className="text-[9px] text-slate-400 mb-1 leading-tight">Paid Ads</p>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-base font-sans font-bold text-blue-600 leading-tight">{formatUsd(gtmProjection.adsSpend)}</span>
+                                <span className="text-[9px] text-slate-400 font-mono font-medium">{gtmProjection.adsVolume}条</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Total Spend Summary */}
+                          <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
+                            <div className="w-[64px] h-[64px] flex-shrink-0">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={gtmProjection.totalMarketingSpend > 0 ? [
+                                      { name: '内容营销', value: gtmProjection.contentSpend },
+                                      { name: '付费投放', value: gtmProjection.adsSpend },
+                                    ] : [{ name: '无数据', value: 1 }]}
+                                    cx="50%" cy="50%"
+                                    innerRadius={22} outerRadius={30}
+                                    startAngle={90} endAngle={-270}
+                                    paddingAngle={gtmProjection.totalMarketingSpend > 0 ? 3 : 0}
+                                    dataKey="value"
+                                    stroke="none"
+                                  >
+                                    {gtmProjection.totalMarketingSpend > 0 ? (
+                                      <>
+                                        <Cell fill="#10b981" />
+                                        <Cell fill="#3b82f6" />
+                                      </>
+                                    ) : (
+                                      <Cell fill="#cbd5e1" />
+                                    )}
+                                  </Pie>
+                                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '10px', color: '#0f172a' }} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="text-left py-1">
+                              <h4 className="text-[11px] font-bold text-slate-800 leading-tight">营销总花费</h4>
+                              <p className="text-[9px] text-slate-400 mb-1 leading-tight">Total Marketing Spend</p>
+                              <span className="text-base font-sans font-bold text-slate-900 leading-tight">{formatUsd(gtmProjection.totalMarketingSpend)}</span>
+                              {gtmProjection.totalMarketingSpend > 0 && (
+                                <div className="mt-1 flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                  <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{gtmProjection.contentSpendPercent}%</span>
+                                  <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{gtmProjection.adsSpendPercent}%</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       
                       <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 mt-0">
@@ -1388,7 +1444,7 @@ export default function App() {
                           label="推荐与裂变 (Referral)" 
                           description="通过系统 APP 跳转了多少次"
                           value={currentProject?.gtmStrategy.referral?.volume || 0} 
-                          onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: { ...currentProject!.gtmStrategy.referral, volume: v } } })}
+                          onChange={(v) => updateGtmChannel('referral', { volume: v })}
                           icon={<Users size={14} className="text-purple-500" />}
                         />
 
@@ -1396,7 +1452,7 @@ export default function App() {
                           label="自传播 (Viral / Referral)" 
                           description="用户分享了多少次对应的应用"
                           value={currentProject?.gtmStrategy.viral?.volume || 0} 
-                          onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, viral: { ...currentProject!.gtmStrategy.viral, volume: v } } })}
+                          onChange={(v) => updateGtmChannel('viral', { volume: v })}
                           icon={<Target size={14} className="text-rose-500" />}
                         />
 
@@ -1404,93 +1460,62 @@ export default function App() {
                           label="自然搜索 (SEO / ASO)" 
                           description="投入的 SEO 资源点数"
                           value={currentProject?.gtmStrategy.seoAso?.volume || 0} 
-                          onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: { ...currentProject!.gtmStrategy.seoAso, volume: v } } })}
+                          onChange={(v) => updateGtmChannel('seoAso', { volume: v })}
                           icon={<Search size={14} className="text-indigo-500" />}
                         />
                       </div>
 
                       {/* 获取用户转换 / User Acquisition & Conversion */}
                       <div className="md:col-span-2 mt-4">
-                        {(() => {
-                          const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
-                          const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
-                          const referralVol = currentProject?.gtmStrategy.referral?.volume || 0;
-                          const seoVol = currentProject?.gtmStrategy.seoAso?.volume || 0;
+                        <div className="relative">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="p-1.5 bg-indigo-50 rounded-lg">
+                              <TrendingUp size={14} className="text-indigo-600" />
+                            </div>
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">获取用户转换 / User Acquisition</h3>
+                          </div>
                           
-                          const kFactor = currentProject?.gtmStrategy.viral?.kFactor || 1.2;
-                          const adsCvr = currentProject?.gtmStrategy.paidAds?.cvr || 5;
-                          const refCvr = currentProject?.gtmStrategy.referral?.cvr || 10;
-                          
-                          // Reach calculation
-                          const contentReach = contentVol * 5000;
-                          const adsReach = adsVol * 2500;
-                          const seoReach = seoVol * 500;
-                          const totalImpressions = adsReach;
-                          
-                          // Conversion calculation
-                          const contentInstalls = 0;
-                          const adsInstalls = Math.floor(adsReach * (adsCvr / 100));
-                          const seoInstalls = Math.floor(seoReach * 0.08);
-                          const referralInstalls = Math.floor(referralVol * (refCvr / 100));
-                          
-                          const directInstalls = contentInstalls + adsInstalls + seoInstalls + referralInstalls;
-                          const viralInstalls = Math.floor(directInstalls * (kFactor - 1));
-                          const totalNewUsers = directInstalls + viralInstalls;
-                          
-                          const formatNum = (n: number) => n >= 10000 ? (n/10000).toFixed(1) + 'w' : n.toLocaleString();
-
-                          return (
-                            <div className="relative">
-                              <div className="flex items-center gap-2 mb-4">
-                                <div className="p-1.5 bg-indigo-50 rounded-lg">
-                                  <TrendingUp size={14} className="text-indigo-600" />
-                                </div>
-                                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">获取用户转换 / User Acquisition</h3>
-                              </div>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">曝光总量</p>
-                                  <div className="flex items-baseline gap-1">
-                                    <span className="text-xl font-sans font-bold text-slate-800">{formatNum(totalImpressions)}</span>
-                                    <span className="text-[10px] text-slate-400">次曝光</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">直接转化</p>
-                                  <div className="flex items-baseline gap-1">
-                                    <span className="text-xl font-sans font-bold text-emerald-600">+{formatNum(directInstalls)}</span>
-                                    <span className="text-[10px] text-slate-400">新用户</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl">
-                                  <p className="text-[10px] font-bold text-indigo-400 uppercase mb-1">病毒增长 (K={kFactor})</p>
-                                  <div className="flex items-baseline gap-1">
-                                    <span className="text-xl font-sans font-bold text-indigo-600">+{formatNum(viralInstalls)}</span>
-                                    <span className="text-[10px] text-indigo-400">裂变</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="p-4 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl shadow-lg shadow-indigo-200">
-                                  <p className="text-[10px] font-bold text-white/70 uppercase mb-1">总获客预估</p>
-                                  <div className="flex items-baseline gap-1">
-                                    <span className="text-xl font-sans font-bold text-white">{formatNum(totalNewUsers)}</span>
-                                    <span className="text-[10px] text-white/70">/月</span>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div className="mt-4 flex items-center gap-4 text-[9px] font-medium text-slate-400">
-                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 内容转化: {contentInstalls}</span>
-                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" /> 付费转化: {adsInstalls}</span>
-                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400" /> 推荐转化: {referralInstalls}</span>
-                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> SEO转化: {seoInstalls}</span>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">曝光总量</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-sans font-bold text-slate-800">{formatCompactNumber(gtmProjection.totalImpressions)}</span>
+                                <span className="text-[10px] text-slate-400">次曝光</span>
                               </div>
                             </div>
-                          );
-                        })()}
+                            
+                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">直接转化</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-sans font-bold text-emerald-600">+{formatCompactNumber(gtmProjection.directInstalls)}</span>
+                                <span className="text-[10px] text-slate-400">新用户</span>
+                              </div>
+                            </div>
+                            
+                            <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl">
+                              <p className="text-[10px] font-bold text-indigo-400 uppercase mb-1">病毒增长 (K={gtmProjection.kFactor})</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-sans font-bold text-indigo-600">+{formatCompactNumber(gtmProjection.viralInstalls)}</span>
+                                <span className="text-[10px] text-indigo-400">裂变</span>
+                              </div>
+                            </div>
+                            
+                            <div className="p-4 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl shadow-lg shadow-indigo-200">
+                              <p className="text-[10px] font-bold text-white/70 uppercase mb-1">总获客预估</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-sans font-bold text-white">{formatCompactNumber(gtmProjection.totalNewUsers)}</span>
+                                <span className="text-[10px] text-white/70">/月</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 flex items-center gap-4 text-[9px] font-medium text-slate-400">
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 内容转化: {gtmProjection.contentInstalls}</span>
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" /> 付费转化: {gtmProjection.adsInstalls}</span>
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400" /> 推荐转化: {gtmProjection.referralInstalls}</span>
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> SEO转化: {gtmProjection.seoInstalls}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -1503,38 +1528,20 @@ export default function App() {
                     </h3>
                     <div className="space-y-5 overflow-y-auto pr-2 custom-scrollbar">
                       {/* GTM Sync -> Estimated MAU */}
-                      {(() => {
-                        const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
-                        const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
-                        const referralVol = currentProject?.gtmStrategy.referral?.volume || 0;
-                        const seoVol = currentProject?.gtmStrategy.seoAso?.volume || 0;
-                        const adsCvr = currentProject?.gtmStrategy.paidAds?.cvr || 5;
-                        const refCvr = currentProject?.gtmStrategy.referral?.cvr || 10;
-                        const kFactor = currentProject?.gtmStrategy.viral?.kFactor || 1.2;
-                        
-                        const adsInstalls = Math.floor(adsVol * 2500 * (adsCvr / 100));
-                        const seoInstalls = Math.floor(seoVol * 500 * 0.08);
-                        const referralInstalls = Math.floor(referralVol * (refCvr / 100));
-                        const directInstalls = adsInstalls + seoInstalls + referralInstalls;
-                        const estMau = Math.floor(directInstalls * kFactor);
-                        
-                        return (
-                          <div className="p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-400">预估月活 (基于GTM)</span>
-                              <button 
-                                onClick={() => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, targetMau: estMau } as any })}
-                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline underline-offset-2 transition-colors"
-                              >
-                                同步到目标
-                              </button>
-                            </div>
-                            <div className="text-xl font-sans font-bold text-indigo-600">
-                              {estMau.toLocaleString()} <span className="text-xs font-normal text-indigo-400 uppercase ml-1">MAU</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      <div className="p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-400">预估月活 (基于GTM)</span>
+                          <button 
+                            onClick={() => updateCostStructure({ targetMau: gtmProjection.estimatedMauFromGtm })}
+                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline underline-offset-2 transition-colors"
+                          >
+                            同步到目标
+                          </button>
+                        </div>
+                        <div className="text-xl font-sans font-bold text-indigo-600">
+                          {gtmProjection.estimatedMauFromGtm.toLocaleString()} <span className="text-xs font-normal text-indigo-400 uppercase ml-1">MAU</span>
+                        </div>
+                      </div>
 
                       {/* Daily Free Uses Slider */}
                       <div>
@@ -1548,7 +1555,7 @@ export default function App() {
                           max="20" 
                           step="1" 
                           value={currentProject?.costStructure?.dailyFreeUses ?? 5}
-                          onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, dailyFreeUses: parseInt(e.target.value) } as any })}
+                          onChange={e => updateCostStructure({ dailyFreeUses: parseInt(e.target.value) })}
                           className="w-full accent-indigo-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                         />
                       </div>
@@ -1559,7 +1566,7 @@ export default function App() {
                         <input 
                           type="number" 
                           value={currentProject?.costStructure?.targetMau ?? 100000}
-                          onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, targetMau: parseInt(e.target.value) || 0 } as any })}
+                          onChange={e => updateCostStructure({ targetMau: parseInt(e.target.value) || 0 })}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:bg-white focus:border-indigo-400 shadow-sm font-sans transition-all"
                         />
                       </div>
@@ -1573,7 +1580,7 @@ export default function App() {
                             type="number" 
                             step="0.001"
                             value={currentProject?.costStructure?.costPerCall !== undefined ? currentProject.costStructure.costPerCall : 0.01}
-                            onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, costPerCall: parseFloat(e.target.value) || 0 } as any })}
+                            onChange={e => updateCostStructure({ costPerCall: parseFloat(e.target.value) || 0 })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-6 text-xs focus:outline-none focus:bg-white focus:border-emerald-400 shadow-sm font-sans transition-all"
                           />
                         </div>
@@ -1591,7 +1598,7 @@ export default function App() {
                           max="50" 
                           step="1" 
                           value={currentProject?.costStructure?.paidConversionRate ?? 3}
-                          onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, paidConversionRate: parseInt(e.target.value) } as any })}
+                          onChange={e => updateCostStructure({ paidConversionRate: parseInt(e.target.value) })}
                           className="w-full accent-emerald-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                         />
                       </div>
@@ -1603,7 +1610,7 @@ export default function App() {
                           {[4.99, 9.99, 14.99, 19.99].map(price => (
                             <button
                               key={price}
-                              onClick={() => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, monthlySubscription: price } as any })}
+                              onClick={() => updateCostStructure({ monthlySubscription: price })}
                               className={`py-2.5 rounded-xl text-[10px] font-bold transition-all ${
                                 (currentProject?.costStructure?.monthlySubscription ?? 19.99) === price 
                                   ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20' 
@@ -1619,51 +1626,26 @@ export default function App() {
 
                     {/* Results Card */}
                     <div className="mt-0 bg-slate-50 border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] rounded-3xl p-5 space-y-4">
-                      {(() => {
-                        const mau = currentProject?.costStructure?.targetMau ?? 100000;
-                        const convRate = currentProject?.costStructure?.paidConversionRate ?? 3;
-                        const subPrice = currentProject?.costStructure?.monthlySubscription ?? 19.99;
-                        const freeUses = currentProject?.costStructure?.dailyFreeUses ?? 5;
-                        const costPerCall = currentProject?.costStructure?.costPerCall !== undefined ? currentProject.costStructure.costPerCall : 0.01;
-                        
-                        const paidUsers = mau * (convRate / 100);
-                        const revenue = paidUsers * subPrice;
-                        const totalCalls = mau * freeUses * 30;
-                        const cost = totalCalls * costPerCall;
-                        
-                        const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
-                        const contentCost = currentProject?.gtmStrategy.contentMarketing?.unitCost || 0;
-                        const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
-                        const adsCost = currentProject?.gtmStrategy.paidAds?.unitCost || 0;
-                        const marketingSpend = (contentVol * contentCost) + (adsVol * adsCost);
-                        
-                        const profit = revenue - cost - marketingSpend;
-
-                        const formatUSD = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
-
-                        return (
-                          <>
-                            <div className="flex justify-between items-center border-b border-white pb-4">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">营收预估</span>
-                              <span className="text-emerald-500 font-sans font-bold text-lg">+{formatUSD(revenue)} /月</span>
-                            </div>
-                            <div className="flex justify-between items-center border-b border-white pb-4">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">模型成本</span>
-                              <span className="text-rose-500 font-sans font-bold text-lg">-{formatUSD(cost)} /月</span>
-                            </div>
-                            <div className="flex justify-between items-center border-b border-white pb-4">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">营销成本</span>
-                              <span className="text-rose-500 font-sans font-bold text-lg">-{formatUSD(marketingSpend)} /月</span>
-                            </div>
-                            <div className="flex justify-between items-center pt-2">
-                              <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">预估运营毛利</span>
-                              <div className="text-right">
-                                <span className="text-slate-900 font-sans font-bold text-2xl">{formatUSD(profit)}</span>
-                              </div>
-                            </div>
-                          </>
-                        );
-                      })()}
+                      <>
+                        <div className="flex justify-between items-center border-b border-white pb-4">
+                          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">营收预估</span>
+                          <span className="text-emerald-500 font-sans font-bold text-lg">+{formatUsd(gtmProjection.revenue)} /月</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-white pb-4">
+                          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">模型成本</span>
+                          <span className="text-rose-500 font-sans font-bold text-lg">-{formatUsd(gtmProjection.modelCost)} /月</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-white pb-4">
+                          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">营销成本</span>
+                          <span className="text-rose-500 font-sans font-bold text-lg">-{formatUsd(gtmProjection.totalMarketingSpend)} /月</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
+                          <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">预估运营毛利</span>
+                          <div className="text-right">
+                            <span className="text-slate-900 font-sans font-bold text-2xl">{formatUsd(gtmProjection.profit)}</span>
+                          </div>
+                        </div>
+                      </>
                       
                       {/* Growth Assumptions Panel - Temporarily removed for logic re-evaluation */}
                     </div>
@@ -1679,187 +1661,125 @@ export default function App() {
 
                 {/* GTM 操盘计划总结 / Operations Summary */}
                 <div {...getPanelProps("gtm-summary", "glass-panel p-4 border-slate-200 bg-white mt-6")}>
-                  {(() => {
-                    // === Gather all GTM data ===
-                    const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
-                    const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
-                    const referralVol = currentProject?.gtmStrategy.referral?.volume || 0;
-                    const viralVol = currentProject?.gtmStrategy.viral?.volume || 0;
-                    const seoVol = currentProject?.gtmStrategy.seoAso?.volume || 0;
+                  <>
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shadow-md">
+                          <BarChart3 size={14} className="text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold text-slate-900">GTM 操盘计划总结</h3>
+                          <p className="text-[9px] text-slate-400 uppercase tracking-wider">Operations Summary → Sandbox Input</p>
+                        </div>
+                      </div>
+                      <div className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-full flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">数据将送往沙盘推演</span>
+                      </div>
+                    </div>
 
-                    const contentCost = currentProject?.gtmStrategy.contentMarketing?.unitCost || 0;
-                    const adsCost = currentProject?.gtmStrategy.paidAds?.unitCost || 0;
-                    const marketingSpend = (contentVol * contentCost) + (adsVol * adsCost);
+                    {/* 3-Column Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-                    const kFactor = currentProject?.gtmStrategy.viral?.kFactor || 1.2;
-                    const adsCvr = currentProject?.gtmStrategy.paidAds?.cvr || 5;
-                    const refCvr = currentProject?.gtmStrategy.referral?.cvr || 10;
+                      {/* Left: Radar Chart */}
+                      <div className="lg:col-span-3 bg-slate-50/50 border border-slate-100/60 rounded-xl p-3 flex flex-col justify-center">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center">渠道投入雷达图</p>
+                        <div className="h-[120px] mt-1">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart data={gtmProjection.radarData} cx="50%" cy="50%" outerRadius="80%">
+                              <PolarGrid stroke="#f1f5f9" />
+                              <PolarAngleAxis dataKey="channel" tick={{ fontSize: 9, fill: '#64748b' }} />
+                              <Radar name="投入" dataKey="value" stroke="#334155" fill="#334155" fillOpacity={0.1} strokeWidth={1.5} />
+                              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '10px', padding: '4px 8px' }} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
 
-                    const adsReach = adsVol * 2500;
-                    const seoReach = seoVol * 500;
-                    const adsInstalls = Math.floor(adsReach * (adsCvr / 100));
-                    const seoInstalls = Math.floor(seoReach * 0.08);
-                    const referralInstalls = Math.floor(referralVol * (refCvr / 100));
-                    const directInstalls = adsInstalls + seoInstalls + referralInstalls;
-                    const viralInstalls = Math.floor(directInstalls * (kFactor - 1));
-                    const totalNewUsers = directInstalls + viralInstalls;
-                    const estMau = Math.floor(directInstalls * kFactor);
-
-                    const mau = currentProject?.costStructure?.targetMau ?? 100000;
-                    const convRate = currentProject?.costStructure?.paidConversionRate ?? 3;
-                    const subPrice = currentProject?.costStructure?.monthlySubscription ?? 19.99;
-                    const freeUses = currentProject?.costStructure?.dailyFreeUses ?? 5;
-                    const costPerCall = currentProject?.costStructure?.costPerCall !== undefined ? currentProject.costStructure.costPerCall : 0.01;
-                    const paidUsers = mau * (convRate / 100);
-                    const revenue = paidUsers * subPrice;
-                    const totalCalls = mau * freeUses * 30;
-                    const modelCost = totalCalls * costPerCall;
-                    const profit = revenue - modelCost - marketingSpend;
-
-                    const formatUSD = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
-                    const formatNum = (n: number) => n >= 10000 ? (n/10000).toFixed(1) + 'w' : n.toLocaleString();
-
-                    // Radar data
-                    const radarData = [
-                      { channel: '内容', value: contentVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
-                      { channel: '付费', value: adsVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
-                      { channel: '裂变', value: referralVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
-                      { channel: '自传播', value: viralVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
-                      { channel: 'SEO', value: seoVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
-                    ];
-
-                    // Bar chart data
-                    const barData = [
-                      { name: '营收', value: revenue, fill: '#10b981' },
-                      { name: '模型成本', value: modelCost, fill: '#f43f5e' },
-                      { name: '营销成本', value: marketingSpend, fill: '#f43f5e' },
-                    ];
-
-                    return (
-                      <>
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shadow-md">
-                              <BarChart3 size={14} className="text-white" />
-                            </div>
-                            <div>
-                              <h3 className="text-xs font-bold text-slate-900">GTM 操盘计划总结</h3>
-                              <p className="text-[9px] text-slate-400 uppercase tracking-wider">Operations Summary → Sandbox Input</p>
-                            </div>
+                      {/* Center: KPI Cards */}
+                      <div className="lg:col-span-5 grid grid-cols-2 gap-3 items-center">
+                        {/* Total Acquisition */}
+                        <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">月新增获客</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-sans font-bold text-indigo-600">{formatCompactNumber(gtmProjection.totalNewUsers)}</span>
+                            <span className="text-[9px] text-slate-400">/月</span>
                           </div>
-                          <div className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-full flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">数据将送往沙盘推演</span>
+                          <div className="mt-1 flex items-center gap-1.5 text-[8px] text-slate-400 uppercase tracking-tighter">
+                            <span>直接 {formatCompactNumber(gtmProjection.directInstalls)}</span>
+                            <span className="text-slate-300">|</span>
+                            <span>裂变 {formatCompactNumber(gtmProjection.viralInstalls)}</span>
                           </div>
                         </div>
 
-                        {/* 3-Column Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
-                          {/* Left: Radar Chart */}
-                          <div className="lg:col-span-3 bg-slate-50/50 border border-slate-100/60 rounded-xl p-3 flex flex-col justify-center">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center">渠道投入雷达图</p>
-                            <div className="h-[120px] mt-1">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="80%">
-                                  <PolarGrid stroke="#f1f5f9" />
-                                  <PolarAngleAxis dataKey="channel" tick={{ fontSize: 9, fill: '#64748b' }} />
-                                  <Radar name="投入" dataKey="value" stroke="#334155" fill="#334155" fillOpacity={0.1} strokeWidth={1.5} />
-                                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '10px', padding: '4px 8px' }} />
-                                </RadarChart>
-                              </ResponsiveContainer>
-                            </div>
+                        {/* Estimated MAU */}
+                        <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">预估月活 MAU</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-sans font-bold text-emerald-500">{formatCompactNumber(gtmProjection.estimatedMauFromGtm)}</span>
+                            <span className="text-[9px] text-slate-400">用户</span>
                           </div>
-
-                          {/* Center: KPI Cards */}
-                          <div className="lg:col-span-5 grid grid-cols-2 gap-3 items-center">
-                            {/* Total Acquisition */}
-                            <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
-                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">月新增获客</p>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-xl font-sans font-bold text-indigo-600">{formatNum(totalNewUsers)}</span>
-                                <span className="text-[9px] text-slate-400">/月</span>
-                              </div>
-                              <div className="mt-1 flex items-center gap-1.5 text-[8px] text-slate-400 uppercase tracking-tighter">
-                                <span>直接 {formatNum(directInstalls)}</span>
-                                <span className="text-slate-300">|</span>
-                                <span>裂变 {formatNum(viralInstalls)}</span>
-                              </div>
-                            </div>
-
-                            {/* Estimated MAU */}
-                            <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
-                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">预估月活 MAU</p>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-xl font-sans font-bold text-emerald-500">{formatNum(estMau)}</span>
-                                <span className="text-[9px] text-slate-400">用户</span>
-                              </div>
-                              <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
-                                付费转化 {convRate}% → {formatNum(Math.floor(estMau * convRate / 100))} 付费用户
-                              </div>
-                            </div>
-
-                            {/* Marketing Spend */}
-                            <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
-                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">营销总花费</p>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-xl font-sans font-bold text-rose-500">{formatUSD(marketingSpend)}</span>
-                                <span className="text-[9px] text-slate-400">/月</span>
-                              </div>
-                              <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
-                                CAC ≈ {totalNewUsers > 0 ? '$' + (marketingSpend / totalNewUsers).toFixed(2) : 'N/A'}
-                              </div>
-                            </div>
-
-                            {/* Operating Margin */}
-                            <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
-                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">预估运营毛利</p>
-                              <div className="flex items-baseline gap-1">
-                                <span className={`text-xl font-sans font-bold ${profit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{formatUSD(profit)}</span>
-                                <span className="text-[9px] text-slate-400">/月</span>
-                              </div>
-                              <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
-                                利润率 {revenue > 0 ? (profit / revenue * 100).toFixed(1) : '0'}%
-                              </div>
-                            </div>
+                          <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
+                            付费转化 {gtmProjection.paidConversionRate}% → {formatCompactNumber(gtmProjection.estimatedPaidUsersFromGtm)} 付费用户
                           </div>
-
-                          {/* Right: Bar Chart */}
-                          <div className="lg:col-span-4 bg-slate-50/50 border border-slate-100/60 rounded-xl p-3 flex flex-col justify-center">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center">收支结构对比</p>
-                            <div className="h-[120px] mt-1">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
-                                  <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
-                                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#64748b' }} width={50} />
-                                  <Tooltip
-                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '10px', padding: '4px 8px' }}
-                                    formatter={(value: number) => [formatUSD(value), '']}
-                                  />
-                                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12}>
-                                    {barData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                  </Bar>
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-                          </div>
-
                         </div>
-                      </>
-                    );
-                  })()}
+
+                        {/* Marketing Spend */}
+                        <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">营销总花费</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-sans font-bold text-rose-500">{formatUsd(gtmProjection.totalMarketingSpend)}</span>
+                            <span className="text-[9px] text-slate-400">/月</span>
+                          </div>
+                          <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
+                            CAC ≈ {gtmProjection.customerAcquisitionCost !== null ? `$${gtmProjection.customerAcquisitionCost.toFixed(2)}` : 'N/A'}
+                          </div>
+                        </div>
+
+                        {/* Operating Margin */}
+                        <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">预估运营毛利</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className={`text-xl font-sans font-bold ${gtmProjection.profit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{formatUsd(gtmProjection.profit)}</span>
+                            <span className="text-[9px] text-slate-400">/月</span>
+                          </div>
+                          <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
+                            利润率 {gtmProjection.marginPercent.toFixed(1)}%
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Bar Chart */}
+                      <div className="lg:col-span-4 bg-slate-50/50 border border-slate-100/60 rounded-xl p-3 flex flex-col justify-center">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center">收支结构对比</p>
+                        <div className="h-[120px] mt-1">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={gtmProjection.barData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
+                              <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
+                              <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#64748b' }} width={50} />
+                              <Tooltip
+                                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '10px', padding: '4px 8px' }}
+                                formatter={(value: number) => [formatUsd(value), '']}
+                              />
+                              <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12}>
+                                {gtmProjection.barData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                    </div>
+                  </>
                 </div>
 
                 <div className="flex flex-col items-end gap-3 pt-8 pb-4">
                   <p className="text-[10px] text-slate-400 font-medium italic">配置完以上 GTM 组合后，点击下方进入沙盘推演</p>
                   <button
-                    onClick={() => {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                      setState(s => ({ ...s, activeModule: 'sandbox' }));
-                    }}
+                    onClick={() => navigateToModule('sandbox', {scrollToTop: true})}
                     className="group flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-zenith-accent transition-all shadow-xl hover:shadow-zenith-accent/20"
                   >
                     下一步：进入沙盘推演
@@ -1959,7 +1879,7 @@ export default function App() {
 
                 <div className="flex justify-end pt-4">
                   <button
-                    onClick={() => setState(s => ({ ...s, activeModule: 'generator' }))}
+                    onClick={() => navigateToModule('generator')}
                     className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
                   >
                     下一步：资产生成 <ArrowRight size={16} />
@@ -2049,7 +1969,7 @@ export default function App() {
 
                 <div className="flex justify-end pt-4">
                   <button
-                    onClick={() => setState(s => ({ ...s, activeModule: 'monitoring' }))}
+                    onClick={() => navigateToModule('monitoring')}
                     className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
                   >
                     下一步：哨所监控 <ArrowRight size={16} />
@@ -2114,7 +2034,7 @@ export default function App() {
 
                 <div className="flex justify-end pt-4">
                   <button
-                    onClick={() => setState(s => ({ ...s, activeModule: 'advisor' }))}
+                    onClick={() => navigateToModule('advisor')}
                     className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
                   >
                     下一步：进化顾问 <ArrowRight size={16} />
@@ -2126,212 +2046,6 @@ export default function App() {
         </div>
       </main>
 
-    </div>
-  );
-}
-
-function RiskCell({ label, level }: { label: string, level: 'low' | 'medium' | 'high' }) {
-  const colors = {
-    low: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-    medium: 'bg-yellow-50 text-yellow-600 border-yellow-200',
-    high: 'bg-red-50 text-red-600 border-red-200'
-  };
-  return (
-    <div className={`p-4 rounded-xl border ${colors[level]} text-center`}>
-      <p className="text-[10px] uppercase font-bold tracking-widest mb-1">{label}</p>
-      <p className="text-xs font-bold uppercase">{level}</p>
-    </div>
-  );
-}
-
-function SidebarItem({ 
-  icon, 
-  label, 
-  active, 
-  onClick, 
-  subItems, 
-  activeSubId, 
-  onSubClick,
-  isExpanded,
-  onToggleExpand
-}: { 
-  icon: React.ReactNode, 
-  label: string, 
-  active?: boolean, 
-  onClick: () => void,
-  subItems?: { id: string, label: string }[],
-  activeSubId?: string,
-  onSubClick?: (id: string) => void,
-  isExpanded?: boolean,
-  onToggleExpand?: () => void
-}) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-1 group">
-        <button 
-          onClick={onClick}
-          className={`flex-1 flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-500 relative overflow-hidden ${active ? 'nav-item-active' : 'text-slate-500 hover:text-slate-900'}`}
-        >
-          {active && (
-            <motion.div 
-              layoutId="activeNav"
-              className="absolute inset-0 bg-slate-100/70 backdrop-blur-xl border border-white/80 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.05)] rounded-2xl z-0 dark:bg-slate-800/80 dark:border-slate-700/50"
-              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-            />
-          )}
-          <span className={`${active ? 'text-zenith-accent' : 'text-slate-400 group-hover:text-slate-900'} transition-colors relative z-10`}>
-            {icon}
-          </span>
-          <span className="text-sm relative z-10">{label}</span>
-          {active && (
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="w-1.5 h-1.5 rounded-full bg-zenith-accent ml-auto relative z-10 shadow-sm shadow-zenith-accent/40"
-            />
-          )}
-        </button>
-        
-        {subItems && (
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpand?.();
-            }}
-            className={`p-2 rounded-xl hover:bg-slate-100 transition-colors ${isExpanded ? 'text-zenith-accent' : 'text-slate-400'}`}
-          >
-            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </button>
-        )}
-      </div>
-      
-      <AnimatePresence>
-        {isExpanded && subItems && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden pl-14 space-y-1"
-          >
-            {subItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => onSubClick?.(item.id)}
-                className={`w-full text-left py-2 text-xs transition-colors ${activeSubId === item.id ? 'text-zenith-accent font-bold' : 'text-slate-500 hover:text-slate-900'}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function StatCard({ label, value, trend, negative, tooltip }: { label: string, value: string, trend: string, negative?: boolean, tooltip?: string }) {
-  return (
-    <div className="glass-panel p-8 hover:bg-slate-50 transition-colors group">
-      <div className="flex items-center gap-2 mb-3">
-        <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold">{label}</p>
-        {tooltip && (
-          <div className="group/tooltip relative">
-            <div className="w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[8px] cursor-help font-bold hover:bg-slate-300 transition-colors">?</div>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity z-50 shadow-lg font-normal tracking-wide">
-              {tooltip}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="flex items-baseline justify-between">
-        <h4 className="text-2xl font-sans font-bold text-slate-900">{value}</h4>
-        <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${trend === '稳定' ? 'bg-slate-100 text-slate-500' : (negative ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600')}`}>
-          {trend}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GtmMetricInput({ label, description, value, onChange, icon }: { label: string, description: string, value: number, onChange: (v: number) => void, icon: React.ReactNode }) {
-  return (
-    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 transition-colors group">
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            {icon}
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-700">{label}</span>
-          </div>
-          <p className="text-[10px] text-slate-400 font-medium">{description}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => onChange(Math.max(0, value - 1))}
-            className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-zenith-accent hover:border-zenith-accent/30 transition-all shadow-sm active:scale-95"
-          >
-            <span className="text-lg leading-none mt-[-2px]">-</span>
-          </button>
-          <input 
-            type="number" 
-            value={value} 
-            onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-            onFocus={(e) => e.target.select()}
-            className="w-16 bg-white border border-slate-200 rounded-lg py-1 px-2 text-sm font-mono font-bold text-center text-slate-900 outline-none focus:border-zenith-accent/50 focus:ring-1 focus:ring-zenith-accent/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-          <button 
-            onClick={() => onChange(value + 1)}
-            className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-zenith-accent hover:border-zenith-accent/30 transition-all shadow-sm active:scale-95"
-          >
-            <span className="text-lg leading-none mt-[-2px]">+</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RoiItem({ label, roi, confidence }: { label: string, roi: string, confidence: number }) {
-  return (
-    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors group">
-      <div className="space-y-1">
-        <p className="text-sm font-bold text-slate-900 group-hover:text-zenith-accent transition-colors">{label}</p>
-        <div className="flex items-center gap-2">
-          <div className="w-1 h-1 rounded-full bg-slate-300" />
-          <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">置信度: {confidence}%</p>
-        </div>
-      </div>
-      <div className="text-right">
-        <p className="text-xl font-sans font-bold text-zenith-accent">{roi}</p>
-        <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">预估 ROI</p>
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({ label, value, change, trend = 'up' }: { label: string, value: string, change: string, trend?: 'up' | 'down' }) {
-  return (
-    <div className="glass-panel p-8 space-y-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">{label}</p>
-      <div className="flex items-end justify-between">
-        <h4 className="text-2xl font-sans font-bold text-slate-900">{value}</h4>
-        <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-          {trend === 'up' ? '↑' : '↓'} {change}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AdvisorModeItem({ label, active = false }: { label: string, active?: boolean }) {
-  return (
-    <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer ${
-      active 
-        ? 'bg-slate-100 border-slate-200 text-slate-900 shadow-sm' 
-        : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-    }`}>
-      <span className="text-xs font-bold uppercase tracking-widest">{label}</span>
-      {active && <div className="w-1.5 h-1.5 rounded-full bg-zenith-accent shadow-[0_0_8px_rgba(0,122,255,0.3)]" />}
     </div>
   );
 }
