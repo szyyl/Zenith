@@ -8,6 +8,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  BarChart3,
   BrainCircuit,
   CheckCircle2,
   ChevronDown,
@@ -41,6 +42,8 @@ import ReactMarkdown from 'react-markdown';
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   Line,
@@ -1634,6 +1637,187 @@ export default function App() {
 
 
 
+                </div>
+
+                {/* GTM 操盘计划总结 / Operations Summary */}
+                <div className="glass-panel p-6 border-slate-200 bg-white mt-6">
+                  {(() => {
+                    // === Gather all GTM data ===
+                    const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
+                    const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
+                    const referralVol = currentProject?.gtmStrategy.referral?.volume || 0;
+                    const viralVol = currentProject?.gtmStrategy.viral?.volume || 0;
+                    const seoVol = currentProject?.gtmStrategy.seoAso?.volume || 0;
+
+                    const contentCost = currentProject?.gtmStrategy.contentMarketing?.unitCost || 0;
+                    const adsCost = currentProject?.gtmStrategy.paidAds?.unitCost || 0;
+                    const marketingSpend = (contentVol * contentCost) + (adsVol * adsCost);
+
+                    const kFactor = currentProject?.gtmStrategy.viral?.kFactor || 1.2;
+                    const adsCvr = currentProject?.gtmStrategy.paidAds?.cvr || 5;
+                    const refCvr = currentProject?.gtmStrategy.referral?.cvr || 10;
+
+                    const adsReach = adsVol * 2500;
+                    const seoReach = seoVol * 500;
+                    const adsInstalls = Math.floor(adsReach * (adsCvr / 100));
+                    const seoInstalls = Math.floor(seoReach * 0.08);
+                    const referralInstalls = Math.floor(referralVol * (refCvr / 100));
+                    const directInstalls = adsInstalls + seoInstalls + referralInstalls;
+                    const viralInstalls = Math.floor(directInstalls * (kFactor - 1));
+                    const totalNewUsers = directInstalls + viralInstalls;
+                    const estMau = Math.floor(directInstalls * kFactor);
+
+                    const mau = currentProject?.costStructure?.targetMau ?? 100000;
+                    const convRate = currentProject?.costStructure?.paidConversionRate ?? 3;
+                    const subPrice = currentProject?.costStructure?.monthlySubscription ?? 19.99;
+                    const freeUses = currentProject?.costStructure?.dailyFreeUses ?? 5;
+                    const costPerCall = currentProject?.costStructure?.costPerCall !== undefined ? currentProject.costStructure.costPerCall : 0.01;
+                    const paidUsers = mau * (convRate / 100);
+                    const revenue = paidUsers * subPrice;
+                    const totalCalls = mau * freeUses * 30;
+                    const modelCost = totalCalls * costPerCall;
+                    const profit = revenue - modelCost - marketingSpend;
+
+                    const formatUSD = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
+                    const formatNum = (n: number) => n >= 10000 ? (n/10000).toFixed(1) + 'w' : n.toLocaleString();
+
+                    // Radar data
+                    const radarData = [
+                      { channel: '内容', value: contentVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
+                      { channel: '付费', value: adsVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
+                      { channel: '裂变', value: referralVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
+                      { channel: '自传播', value: viralVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
+                      { channel: 'SEO', value: seoVol, fullMark: Math.max(contentVol, adsVol, referralVol, viralVol, seoVol, 5) },
+                    ];
+
+                    // Bar chart data
+                    const barData = [
+                      { name: '营收', value: revenue, fill: '#10b981' },
+                      { name: '模型成本', value: modelCost, fill: '#f43f5e' },
+                      { name: '营销成本', value: marketingSpend, fill: '#f97316' },
+                    ];
+
+                    return (
+                      <>
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+                              <BarChart3 size={16} className="text-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-bold text-slate-900">GTM 操盘计划总结</h3>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Operations Plan Summary → Sandbox Input</p>
+                            </div>
+                          </div>
+                          <div className="px-3 py-1 bg-violet-50 border border-violet-100 rounded-full">
+                            <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wider">📊 数据将送往沙盘推演</span>
+                          </div>
+                        </div>
+
+                        {/* 3-Column Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                          {/* Left: Radar Chart */}
+                          <div className="lg:col-span-3 bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">渠道投入雷达图</p>
+                            <div className="h-[180px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                                  <PolarGrid stroke="#e2e8f0" />
+                                  <PolarAngleAxis dataKey="channel" tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} />
+                                  <Radar name="投入" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} strokeWidth={2} />
+                                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px' }} />
+                                </RadarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+
+                          {/* Center: KPI Cards */}
+                          <div className="lg:col-span-5 grid grid-cols-2 gap-3">
+                            {/* Total Acquisition */}
+                            <div className="p-4 bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-2xl">
+                              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">月新增获客</p>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-sans font-bold text-indigo-600">{formatNum(totalNewUsers)}</span>
+                                <span className="text-[10px] text-indigo-400">/月</span>
+                              </div>
+                              <div className="mt-2 flex items-center gap-2 text-[9px] text-slate-400">
+                                <span>直接 {formatNum(directInstalls)}</span>
+                                <span className="text-indigo-300">|</span>
+                                <span>裂变 {formatNum(viralInstalls)}</span>
+                              </div>
+                            </div>
+
+                            {/* Estimated MAU */}
+                            <div className="p-4 bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-2xl">
+                              <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">预估月活 MAU</p>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-sans font-bold text-emerald-600">{formatNum(estMau)}</span>
+                                <span className="text-[10px] text-emerald-400">用户</span>
+                              </div>
+                              <div className="mt-2 text-[9px] text-slate-400">
+                                付费转化 {convRate}% → {formatNum(Math.floor(estMau * convRate / 100))} 付费用户
+                              </div>
+                            </div>
+
+                            {/* Marketing Spend */}
+                            <div className="p-4 bg-gradient-to-br from-amber-50 to-white border border-amber-100 rounded-2xl">
+                              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">营销总花费</p>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-sans font-bold text-amber-600">{formatUSD(marketingSpend)}</span>
+                                <span className="text-[10px] text-amber-400">/月</span>
+                              </div>
+                              <div className="mt-2 text-[9px] text-slate-400">
+                                CAC ≈ {totalNewUsers > 0 ? '$' + (marketingSpend / totalNewUsers).toFixed(2) : 'N/A'}
+                              </div>
+                            </div>
+
+                            {/* Operating Margin */}
+                            <div className={`p-4 bg-gradient-to-br rounded-2xl border ${profit >= 0 ? 'from-emerald-50 to-white border-emerald-100' : 'from-rose-50 to-white border-rose-100'}`}>
+                              <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>预估运营毛利</p>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className={`text-2xl font-sans font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatUSD(profit)}</span>
+                                <span className={`text-[10px] ${profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>/月</span>
+                              </div>
+                              <div className="mt-2 text-[9px] text-slate-400">
+                                利润率 {revenue > 0 ? (profit / revenue * 100).toFixed(1) : '0'}%
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Bar Chart */}
+                          <div className="lg:col-span-4 bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">收支结构对比</p>
+                            <div className="h-[180px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={barData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                                  <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
+                                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#475569', fontWeight: 600 }} width={60} />
+                                  <Tooltip
+                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px' }}
+                                    formatter={(value: number) => [formatUSD(value), '']}
+                                  />
+                                  <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={20}>
+                                    {barData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                                    ))}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+
+                        </div>
+
+                        {/* Footer note */}
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                          <p className="text-[10px] text-slate-400 font-medium">以上数据将作为沙盘推演的初始输入参数</p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex flex-col items-end gap-3 pt-8 pb-4">
