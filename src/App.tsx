@@ -37,6 +37,7 @@ import {
   analyzeAssetFromLink,
   generateStrategyResponse,
   type ModelMode,
+  generateSimulationScenarios,
   runSandboxSimulation,
 } from './services/geminiService';
 import ReactMarkdown from 'react-markdown';
@@ -98,9 +99,10 @@ export default function App() {
     projects: [createProject(DEFAULT_PROJECT_ID)],
     currentProjectId: DEFAULT_PROJECT_ID,
     simulations: [],
+    scenarios: [],
+    isSimulating: false,
     activeModule: 'sandbox',
     activeSubModule: 'sandbox-engine',
-    isSimulating: false,
   });
 
   const currentProject = state.projects.find(p => p.id === state.currentProjectId) || state.projects[0];
@@ -265,25 +267,52 @@ export default function App() {
     setAdvisorChat(prev => [...prev, { role: 'assistant', content: response || "No response" }]);
   };
 
+  const handleGenerateScenarios = async () => {
+    setState(prev => ({ ...prev, isSimulating: true }));
+    try {
+      const gtmData = currentProject;
+      const newScenarios = await generateSimulationScenarios(gtmData);
+      setState(prev => ({ 
+        ...prev, 
+        scenarios: newScenarios,
+        isSimulating: false 
+      }));
+    } catch (error) {
+      console.error("Scenario generation failed:", error);
+      setState(prev => ({ ...prev, isSimulating: false }));
+    }
+  };
+
   const runSimulation = async (scenario: string) => {
     setState(prev => ({ ...prev, isSimulating: true }));
-    const resultText = await runSandboxSimulation(scenario, currentProject);
-    
-    const newSim: SimulationResult = {
-      id: createShortId(),
-      timestamp: Date.now(),
-      scenario,
-      outcome: resultText?.includes("Success") || resultText?.includes("成功") ? "成功" : "检测到风险",
-      risks: ["市场饱和", "高获客成本 (CAC)"],
-      impact: "如果不解决，LTV 可能会下降 20%。",
-      recommendations: ["转向 B2B", "优化入职流程"]
-    };
+    try {
+      const resultText = await runSandboxSimulation(scenario, currentProject);
+      
+      // Extract recommendations from AI response
+      const recMatches = resultText?.match(/(?:建议|对策|措施)[：:]\s*([\s\S]*?)(?:\n\n|$)/gi) || [];
+      const recommendations = recMatches.length > 0 
+        ? recMatches[0].split(/\d+[.、]/).filter(Boolean).map(s => s.trim()).slice(0, 3)
+        : ["优化获客成本结构", "提升用户留存率至 40%+", "建立竞品监控体系"];
 
-    setState(prev => ({
-      ...prev,
-      simulations: [newSim, ...prev.simulations],
-      isSimulating: false
-    }));
+      const newSim: SimulationResult = {
+        id: createShortId(),
+        timestamp: Date.now(),
+        scenario,
+        outcome: resultText || "推演完成，未获取到详细结果。",
+        risks: ["市场饱和", "高获客成本 (CAC)"],
+        impact: "如果不解决，LTV 可能会下降 20%。",
+        recommendations
+      };
+
+      setState(prev => ({
+        ...prev,
+        simulations: [newSim, ...prev.simulations],
+        isSimulating: false
+      }));
+    } catch (error) {
+      console.error("Simulation failed:", error);
+      setState(prev => ({ ...prev, isSimulating: false }));
+    }
   };
 
   const downloadSimulationJson = (simulation: SimulationResult) => {
@@ -461,176 +490,182 @@ export default function App() {
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-12"
               >
-                <div className="flex justify-between items-end">
+                <div className="flex justify-between items-start">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-zenith-accent font-bold">
-                      <ShieldAlert size={12} />
-                      Simulation Engine
+                      <BrainCircuit size={12} />
+                      Strategic Simulation Engine
                     </div>
                     <h2 className="text-4xl font-sans font-bold tracking-tight text-slate-900">动态沙盘推演</h2>
-                    <p className="text-slate-500 max-w-lg text-sm">模拟 ICP 渗透、财务模型及极端变量压力测试。</p>
+                    <p className="text-slate-500 max-w-lg text-sm">基于灵感实验室与 GTM 布局数据，AI 将为您推演多条可能的增长路径并识别核心难题。</p>
                   </div>
-                  <div className="flex gap-4">
+                  
+                  {state.scenarios.length > 0 && (
                     <button 
-                      onClick={() => runSimulation("极端测试：iOS 系统更新内置核心 AI 功能")}
+                      onClick={handleGenerateScenarios}
                       disabled={state.isSimulating}
-                      className="glass-panel px-6 py-3 text-sm hover:bg-slate-50 flex items-center gap-3 disabled:opacity-50 group border-red-500/20"
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-50"
                     >
-                      <AlertTriangle size={16} className="text-red-500" />
-                      系统更新冲击
+                      <Zap size={14} />
+                      重新生成剧本
                     </button>
-                    <button 
-                      onClick={() => runSimulation("爆发测试：单个 KOL 引爆病毒式增长")}
-                      disabled={state.isSimulating}
-                      className="glass-panel px-6 py-3 text-sm hover:bg-slate-50 flex items-center gap-3 disabled:opacity-50 group"
-                    >
-                      <Zap size={16} className="text-yellow-500 group-hover:scale-125 transition-transform" />
-                      爆发测试
-                    </button>
-                  </div>
+                  )}
                 </div>
 
-                <div {...getPanelProps("sandbox-engine", "grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch p-2 rounded-3xl")}>
-                  <div className="lg:col-span-8 glass-panel p-8 min-h-[500px] relative overflow-hidden group h-full">
-                    <div className="flex justify-between items-center mb-10">
-                      <h3 className="text-lg font-sans font-semibold flex items-center gap-3">
-                        ICP 渗透与财务推演
-                      </h3>
-                      <div className="flex gap-6 text-[10px] uppercase tracking-widest font-bold">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                          <span className="text-slate-400">用户渗透</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                          <span className="text-slate-400">损益平衡点</span>
-                        </div>
-                      </div>
+                {state.scenarios.length === 0 ? (
+                  <div className="glass-panel p-20 flex flex-col items-center text-center space-y-6 bg-gradient-to-b from-white to-slate-50 border-slate-100">
+                    <div className="w-20 h-20 rounded-3xl bg-indigo-50 flex items-center justify-center text-indigo-500 relative">
+                      <Zap size={40} />
+                      <div className="absolute inset-0 rounded-3xl bg-indigo-400/20 animate-ping" />
                     </div>
-                    <ResponsiveContainer width="100%" height="80%">
-                      <AreaChart data={MOCK_CHART_DATA}>
-                        <defs>
-                          <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#007AFF" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-                        <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} dx={-10} tickFormatter={(value) => `$${value}`} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', color: '#0f172a' }}
-                          itemStyle={{ fontSize: '12px' }}
-                          formatter={(value: any, name: string) => name === 'revenue' ? [`$${value} USD/月`, '营收'] : [value, '用户']}
-                        />
-                        <Area type="monotone" dataKey="users" stroke="#10b981" fillOpacity={1} fill="url(#colorUsers)" strokeWidth={3} />
-                        <Area type="monotone" dataKey="revenue" stroke="#007AFF" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="lg:col-span-4 flex flex-col gap-8 h-full">
-                    <StatCard label="LTV / CAC 比率" value="3.4x" trend="+0.2" tooltip="赚钱效率" />
-                    <StatCard label="云端推理成本 (Est.)" value="$0.12 USD/req" trend="稳定" />
-                    <StatCard label="损益平衡周期" value="8.5 个月" trend="-1.2" />
-                    <div {...getPanelProps("sandbox-tuning", "glass-panel p-8 space-y-6 border-slate-200 bg-white flex-1")}>
-                      <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500 flex items-center gap-3">
-                        <Settings size={14} className="text-blue-500" />
-                        参数调优 / Parameter Tuning
-                      </h3>
-                      <div className="grid grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                          <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600">市场波动率</label>
-                          <input type="range" className="w-full accent-blue-500" />
-                          <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                            <span>0%</span>
-                            <span>50%</span>
-                            <span>100%</span>
-                          </div>
-                        </div>
-                        <div className="space-y-4">
-                          <label className="text-[10px] uppercase tracking-widest font-bold text-slate-600">竞争强度</label>
-                          <input type="range" className="w-full accent-red-500" />
-                          <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                            <span>Low</span>
-                            <span>Medium</span>
-                            <span>High</span>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="space-y-2 max-w-md">
+                      <h3 className="text-xl font-bold text-slate-900">准备开启 AI 增长推演</h3>
+                      <p className="text-sm text-slate-400 leading-relaxed italic">
+                        我们将提取您的 USP、用户画像及渠道配比数据，预测接下来 12 个月可能发生的博弈场景。
+                      </p>
                     </div>
+                    <button
+                      onClick={handleGenerateScenarios}
+                      disabled={state.isSimulating}
+                      className="px-10 py-5 bg-slate-900 text-white rounded-3xl text-sm font-bold shadow-2xl shadow-indigo-200 hover:bg-zenith-accent transition-all flex items-center gap-4 disabled:opacity-50"
+                    >
+                      {state.isSimulating ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          正在推演可能路径...
+                        </>
+                      ) : (
+                        <>
+                          生成增长剧本 <ArrowRight size={18} />
+                        </>
+                      )}
+                    </button>
                   </div>
-                </div>
-
-                <div {...getPanelProps("sandbox-history", "space-y-6 p-4 rounded-3xl")}>
-                  <div className="flex items-center gap-4">
-                    <h3 className="text-xl font-sans font-bold text-slate-900">推演历史</h3>
-                    <div className="h-px flex-1 bg-slate-200" />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {state.simulations.map((sim, index) => (
-                      <motion.div 
-                        key={sim.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="glass-panel p-6 hover:bg-slate-50 group cursor-pointer relative"
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {state.scenarios.map((scenario) => (
+                      <button
+                        key={scenario.id}
+                        onClick={() => runSimulation(scenario.title)}
+                        disabled={state.isSimulating}
+                        className={`text-left p-6 rounded-3xl border transition-all duration-300 group relative overflow-hidden flex flex-col justify-between h-full bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 ${state.simulations[0]?.scenario === scenario.title ? 'border-zenith-accent ring-2 ring-zenith-accent/20' : 'border-slate-100'}`}
                       >
-                        <div className="flex justify-between items-start mb-4">
-                          <span className="text-[10px] font-mono text-slate-500">{new Date(sim.timestamp).toLocaleTimeString()}</span>
-                          <div className="flex items-center gap-3">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  downloadSimulationJson(sim);
-                                }}
-                                className="text-[10px] text-slate-500 hover:text-zenith-accent flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm"
-                              >
-                                JSON
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  downloadSimulationCsv(sim);
-                                }}
-                                className="text-[10px] text-slate-500 hover:text-zenith-accent flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm"
-                              >
-                                CSV
-                              </button>
+                        <div className="relative z-10 space-y-4">
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-bold text-slate-900 line-clamp-1">{scenario.title}</h4>
+                            <div className={`px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-widest ${state.simulations[0]?.scenario === scenario.title ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-colors'}`}>
+                              {state.simulations[0]?.scenario === scenario.title ? '已推演' : '待激活'}
                             </div>
-                            <div className={`w-2 h-2 rounded-full ${sim.outcome === '成功' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                          </div>
+                          
+                          <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-3 italic">
+                            {scenario.description}
+                          </p>
+
+                          <div className="p-3 bg-red-50/50 rounded-xl border border-red-100/30">
+                            <p className="text-[8px] uppercase tracking-widest font-bold text-red-400 mb-1 flex items-center gap-1.5">
+                              <AlertTriangle size={10} /> 遇到的难题 / Challenge
+                            </p>
+                            <p className="text-[10px] text-slate-700 font-medium leading-snug">
+                              {scenario.difficulty}
+                            </p>
                           </div>
                         </div>
-                        <h4 className="font-medium text-slate-900 mb-2 group-hover:text-zenith-accent transition-colors">{sim.scenario}</h4>
-                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4">{sim.impact}</p>
-                        <div className="flex items-center justify-between">
-                          <div className="flex gap-2">
-                            {sim.risks.map(risk => (
-                              <span key={risk} className="text-[9px] uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md text-slate-600 border border-slate-200">{risk}</span>
-                            ))}
-                          </div>
-                          {sim.inferenceCost && (
-                            <span className="text-[10px] text-slate-500 font-mono">Cost: ${sim.inferenceCost}</span>
-                          )}
+                        
+                        <div className="mt-6 flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter relative z-10">
+                          <span className="text-slate-400">触发阈值: {scenario.trigger}</span>
+                          <ChevronRight size={14} className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
                         </div>
-                      </motion.div>
+                      </button>
                     ))}
                   </div>
-                </div>
+                )}
 
-                <div className="flex justify-end pt-4">
-                  <button
-                    onClick={() => setState(s => ({ ...s, activeModule: 'diagnostics' }))}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
+                {state.simulations.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-12"
                   >
-                    下一步：诊断与评分 <ArrowRight size={16} />
-                  </button>
-                </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+                      <div className="lg:col-span-8 space-y-8 h-full">
+                        <div className="glass-panel p-8 bg-white border-slate-100 flex-1">
+                          <div className="flex items-center gap-3 mb-8">
+                            <div className="p-2 bg-indigo-50 rounded-xl">
+                              <Activity size={18} className="text-indigo-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900">推演深度分析：{state.simulations[0].scenario}</h3>
+                          </div>
+                          
+                          <div className="prose prose-sm max-w-none text-slate-600 leading-relaxed min-h-[400px]">
+                            <ReactMarkdown>{state.simulations[0].outcome}</ReactMarkdown>
+                          </div>
+                        </div>
+
+                        {/* Charts from active logic */}
+                        <div className="glass-panel p-8 bg-white border-slate-100 h-[400px]">
+                          <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500 mb-10">经营指数走势 / Business Projection</h3>
+                          <div className="h-[250px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={MOCK_CHART_DATA}>
+                                <defs>
+                                  <linearGradient id="colorUsersS" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                  </linearGradient>
+                                  <linearGradient id="colorRevS" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#007AFF" stopOpacity={0.1}/>
+                                    <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)' }} />
+                                <Area type="monotone" dataKey="users" stroke="#10b981" fill="url(#colorUsersS)" strokeWidth={3} />
+                                <Area type="monotone" dataKey="revenue" stroke="#007AFF" fill="url(#colorRevS)" strokeWidth={3} />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-4 flex flex-col gap-8 h-full">
+                        <div className="p-8 bg-slate-900 rounded-[2.5rem] shadow-2xl text-white space-y-6 relative overflow-hidden group flex-1">
+                          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform">
+                            <TrendingUp size={80} />
+                          </div>
+                          <h4 className="text-xs font-bold uppercase tracking-[0.3em] text-white/50">核心博弈对策</h4>
+                          <div className="space-y-4">
+                            {state.simulations[0].recommendations?.slice(0, 3).map((rec, i) => (
+                              <div key={i} className="flex gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
+                                <span className="text-zenith-accent font-bold">0{i+1}</span>
+                                <p className="text-xs text-white/90 leading-relaxed">{rec}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <StatCard label="推演获客成本" value={'$' + (currentProject?.gtmStrategy.paidAds.unitCost || 12).toFixed(1)} trend="模拟值" />
+                        <StatCard label="损益平衡点" value="Q4 - 第 10 个月" trend="关键时间" negative />
+                        <StatCard label="模型鲁棒性" value="高" trend="博弈结果" />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-12">
+                      <button
+                        onClick={() => {
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                          setState(s => ({ ...s, activeModule: 'diagnostics' }));
+                        }}
+                        className="group flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all shadow-xl hover:shadow-zenith-accent/20"
+                      >
+                        下一步：诊断与评分
+                        <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
             )}
 
@@ -1463,27 +1498,10 @@ export default function App() {
                   </div>
 
                   <div {...getPanelProps("gtm-cost", "lg:col-span-5 glass-panel p-6 space-y-4 border-slate-200 bg-white h-full flex flex-col justify-between")}>
-                    <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2 mb-2">
+                    <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2 mb-4">
                       <Calculator size={12} className="text-indigo-500" />产品运营成本计算 / COST CALCULATOR
                     </h3>
-                    <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                      {/* Daily Free Uses Slider */}
-                      <div>
-                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-4">
-                          <span>日免费次</span>
-                          <span className="text-indigo-600 font-sans">{currentProject?.costStructure?.dailyFreeUses ?? 5}</span>
-                        </div>
-                        <input 
-                          type="range" 
-                          min="0" 
-                          max="20" 
-                          step="1" 
-                          value={currentProject?.costStructure?.dailyFreeUses ?? 5}
-                          onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, dailyFreeUses: parseInt(e.target.value) } as any })}
-                          className="w-full accent-indigo-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                      </div>
-
+                    <div className="space-y-5 overflow-y-auto pr-2 custom-scrollbar">
                       {/* GTM Sync -> Estimated MAU */}
                       {(() => {
                         const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
@@ -1501,7 +1519,7 @@ export default function App() {
                         const estMau = Math.floor(directInstalls * kFactor);
                         
                         return (
-                          <div className="mb-6 p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl">
+                          <div className="p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl">
                             <div className="flex justify-between items-center mb-1">
                               <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-400">预估月活 (基于GTM)</span>
                               <button 
@@ -1517,6 +1535,23 @@ export default function App() {
                           </div>
                         );
                       })()}
+
+                      {/* Daily Free Uses Slider */}
+                      <div>
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                          <span>日免费次</span>
+                          <span className="text-indigo-600 font-sans">{currentProject?.costStructure?.dailyFreeUses ?? 5}</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="20" 
+                          step="1" 
+                          value={currentProject?.costStructure?.dailyFreeUses ?? 5}
+                          onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, dailyFreeUses: parseInt(e.target.value) } as any })}
+                          className="w-full accent-indigo-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
 
                       {/* Target MAU */}
                       <div>
@@ -1546,7 +1581,7 @@ export default function App() {
 
                       {/* Paid Conversion Rate Slider */}
                       <div>
-                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-4">
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
                           <span>付费转化率</span>
                           <span className="text-emerald-500 font-sans">{currentProject?.costStructure?.paidConversionRate ?? 3}%</span>
                         </div>
@@ -1643,7 +1678,7 @@ export default function App() {
                 </div>
 
                 {/* GTM 操盘计划总结 / Operations Summary */}
-                <div className="glass-panel p-4 border-slate-200 bg-white mt-6">
+                <div {...getPanelProps("gtm-summary", "glass-panel p-4 border-slate-200 bg-white mt-6")}>
                   {(() => {
                     // === Gather all GTM data ===
                     const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;

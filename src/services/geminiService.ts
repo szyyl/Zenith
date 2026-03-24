@@ -6,10 +6,10 @@ const ai = new GoogleGenAI({ apiKey });
 export type ModelMode = 'fast' | 'reasoning' | 'creative' | 'long-context';
 
 export const MODEL_MAP: Record<ModelMode, string> = {
-  'fast': 'gemini-3-flash-preview',
-  'reasoning': 'gemini-3.1-pro-preview',
-  'creative': 'gemini-3-flash-preview', // Flash is actually quite creative and fast
-  'long-context': 'gemini-3.1-pro-preview',
+  'fast': 'gemini-2.0-flash',
+  'reasoning': 'gemini-2.5-pro-preview-05-06',
+  'creative': 'gemini-2.0-flash', // Flash is actually quite creative and fast
+  'long-context': 'gemini-2.5-pro-preview-05-06',
 };
 
 const projectSchema = {
@@ -34,7 +34,7 @@ const projectSchema = {
 export async function analyzeAssetFromLink(url: string) {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
+      model: "gemini-2.0-flash",
       contents: `Extract the product information from the following URL and fill in the required fields: ${url}`,
       config: {
         tools: [{ urlContext: {} }],
@@ -72,7 +72,7 @@ export async function analyzeAssetFromFile(file: File) {
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
+      model: "gemini-2.0-flash",
       contents: [
         {
           inlineData: {
@@ -112,20 +112,45 @@ export async function generateStrategyResponse(prompt: string, mode: ModelMode =
   }
 }
 
-export async function runSandboxSimulation(scenario: string, productData: any) {
+export async function generateSimulationScenarios(productData: any) {
   const prompt = `
-    针对以下产品和场景运行沙盘模拟。
+    作为世界级战略预测专家，分析以下产品及其 GTM 策略，并识别 3-4 个可能的增长剧本或挑战。
     产品数据: ${JSON.stringify(productData)}
-    场景: ${scenario}
     
-    提供详细分析，包括：
-    1. 潜在结果 (成功/失败)
-    2. 关键风险
-    3. 财务影响 (预估)
-    4. 建议行动
-    
-    以适合解析的结构化格式返回响应。
+    返回 JSON 数组，每个对象包含：
+    - id: 唯一标识符
+    - title: 剧本标题 (如 "病毒式爆发"、"获客成本陷阱"、"留存危机")
+    - description: 剧本描述，解释为什么会发生这种情况。
+    - trigger: 触发该剧本的关键因素 (例如 "如果付费渠道 CVR > 8%")
+    - difficulty: 使用者将面临的核心难题 (遇到的难题)
   `;
   
-  return generateStrategyResponse(prompt, 'reasoning', "你是一个模拟引擎。请保持批判性、现实性，并使用数学逻辑。");
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      systemInstruction: "你是一个专业的博弈论专家和产品经理。请提供具有挑战性、现实性且逻辑严密的场景。"
+    }
+  });
+
+  return JSON.parse(response.text || "[]");
+}
+
+export async function runSandboxSimulation(scenario: string, productData: any) {
+  const prompt = `
+    针对以下产品数据运行深度沙盘模拟：
+    产品数据: ${JSON.stringify(productData)}
+    
+    针对以下模拟场景进行博弈推演: "${scenario}"
+    
+    请运用你的核心数学引擎，详细推演以下维度：
+    1. 【潜在结果】：推演 12 个月后的产品状态（月活、月收入、损益平衡点）。
+    2. 【关键风险】：导致该场景失败的灰天鹅或黑天鹅事件。
+    3. 【解决难题的关键对策】：针对该场景面临的难题，提供 3 条实战建议。
+    
+    请以精炼、专业且利于阅读的格式返回。
+  `;
+  
+  return generateStrategyResponse(prompt, 'reasoning', "你是一个沙盘模拟引擎。请基于数据事实驱动，保持批判性，并给出清晰的博弈结论。");
 }

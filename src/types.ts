@@ -39,6 +39,14 @@ export interface ProductData {
   };
 }
 
+export interface SimulationScenario {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: string; // The "Challenge" part
+  trigger: string;
+}
+
 export interface SimulationResult {
   id: string;
   timestamp: number;
@@ -54,6 +62,7 @@ export interface AppState {
   projects: ProductData[];
   currentProjectId: string;
   simulations: SimulationResult[];
+  scenarios: SimulationScenario[];
   activeModule: 'input' | 'gtm' | 'advisor' | 'sandbox' | 'monitoring' | 'diagnostics' | 'generator';
   activeSubModule?: string;
   isSimulating: boolean;

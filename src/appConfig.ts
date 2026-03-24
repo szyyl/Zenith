@@ -161,14 +161,14 @@ export const MODEL_OPTIONS: ModelOption[] = [
   {
     mode: 'fast',
     label: '⚡ 快速模式',
-    description: 'Gemini Flash · 低延迟响应',
-    displayName: 'Gemini Flash',
+    description: 'Gemini 2.0 Flash · 低延迟响应',
+    displayName: 'Gemini 2.0 Flash',
   },
   {
     mode: 'reasoning',
     label: '🧠 深度推理',
-    description: 'Gemini Pro · 复杂逻辑分析',
-    displayName: 'Gemini Pro',
+    description: 'Gemini 2.5 Pro · 复杂逻辑分析',
+    displayName: 'Gemini 2.5 Pro',
   },
 ];
 
@@ -191,9 +191,8 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     icon: Target,
     subItems: [
       {id: 'gtm-model', label: '增长模型'},
-      {id: 'gtm-mix', label: '渠道配比'},
-      {id: 'gtm-roi', label: '渠道 ROI'},
-      {id: 'gtm-insights', label: 'AI 洞察'},
+      {id: 'gtm-cost', label: '产品运营成本计算'},
+      {id: 'gtm-summary', label: 'GTM 操盘计划总结'},
     ],
   },
   {
