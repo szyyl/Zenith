@@ -48,8 +48,8 @@ const BASE_PROJECT: Omit<ProductData, 'id' | 'name'> = {
   },
   salesCycle: 'Short',
   gtmStrategy: {
-    contentMarketing: { volume: 0, unitCost: 50, cvr: 2 },
-    paidAds: { volume: 0, unitCost: 200, cvr: 5 },
+    contentMarketing: { volume: 0, unitCost: 5000, cvr: 2 },
+    paidAds: { volume: 0, unitCost: 100, cvr: 5 },
     referral: { volume: 0, unitCost: 10, cvr: 10 },
     viral: { volume: 0, kFactor: 1.2, cvr: 8 }, // Replaced outboundSales -> viral
     seoAso: { volume: 0, unitCost: 100 },

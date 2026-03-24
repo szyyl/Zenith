@@ -23,6 +23,7 @@ import {
   Settings,
   ShieldAlert,
   Target,
+  TrendingUp,
   Users,
   X,
   Zap,
@@ -1198,36 +1199,263 @@ export default function App() {
                       
                       <GtmMetricInput 
                         label="付费投放 (Paid Ads)" 
-                        description="我们在社媒上投了多少条广告"
+                        description="我们将获得多少付费流量？相关增长模型将自动生成辅助指标"
                         value={currentProject?.gtmStrategy.paidAds?.volume || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: { ...currentProject!.gtmStrategy.paidAds, volume: v } } })}
+                        onChange={(v) => {
+                          const gtm = currentProject!.gtmStrategy;
+                          updateCurrentProject({ 
+                            gtmStrategy: { 
+                              ...gtm, 
+                              paidAds: { ...gtm.paidAds, volume: v },
+                              referral: { ...gtm.referral, volume: Math.floor(v * 0.15) },
+                              viral: { ...gtm.viral, volume: Math.floor(v * 0.3) },
+                              seoAso: { ...gtm.seoAso, volume: Math.floor(v * 0.2) }
+                            } 
+                          });
+                        }}
                         icon={<Zap size={14} className="text-blue-500" />}
                       />
+
+                      {/* 营销花费模块 / Marketing Spend */}
+                      <div className="md:col-span-2 pt-2 mb-6">
+                        {(() => {
+                          const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
+                          const contentCost = currentProject?.gtmStrategy.contentMarketing?.unitCost || 0;
+                          const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
+                          const adsCost = currentProject?.gtmStrategy.paidAds?.unitCost || 0;
+                          const contentTotal = contentVol * contentCost;
+                          const adsTotal = adsVol * adsCost;
+                          const totalSpend = contentTotal + adsTotal;
+                          const contentPct = totalSpend > 0 ? Math.round((contentTotal / totalSpend) * 100) : 0;
+                          const adsPct = totalSpend > 0 ? Math.round((adsTotal / totalSpend) * 100) : 0;
+
+                          const formatUSD = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
+
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* Content Marketing Cost */}
+                              <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
+                                <div className="w-[64px] h-[64px] flex-shrink-0">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                      <Pie
+                                        data={[
+                                          { name: '内容营销', value: contentTotal || 1 },
+                                          { name: '剩余', value: totalSpend > 0 ? Math.max(0, totalSpend - contentTotal) : 1 },
+                                        ]}
+                                        cx="50%" cy="50%"
+                                        innerRadius={22} outerRadius={30}
+                                        startAngle={90} endAngle={-270}
+                                        dataKey="value"
+                                        stroke="none"
+                                      >
+                                        <Cell fill="#10b981" />
+                                        <Cell fill="#e2e8f0" />
+                                      </Pie>
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                </div>
+                                <div className="text-left py-1">
+                                  <h4 className="text-[11px] font-bold text-slate-800 leading-tight">内容营销花费</h4>
+                                  <p className="text-[9px] text-slate-400 mb-1 leading-tight">Content Marketing</p>
+                                  <div className="flex items-baseline gap-1.5">
+                                    <span className="text-base font-sans font-bold text-emerald-600 leading-tight">{formatUSD(contentTotal)}</span>
+                                    <span className="text-[9px] text-slate-400 font-mono font-medium">{contentVol}条</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Paid Ads Cost */}
+                              <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
+                                <div className="w-[64px] h-[64px] flex-shrink-0">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                      <Pie
+                                        data={[
+                                          { name: '付费投放', value: adsTotal || 1 },
+                                          { name: '剩余', value: totalSpend > 0 ? Math.max(0, totalSpend - adsTotal) : 1 },
+                                        ]}
+                                        cx="50%" cy="50%"
+                                        innerRadius={22} outerRadius={30}
+                                        startAngle={90} endAngle={-270}
+                                        dataKey="value"
+                                        stroke="none"
+                                      >
+                                        <Cell fill="#3b82f6" />
+                                        <Cell fill="#e2e8f0" />
+                                      </Pie>
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                </div>
+                                <div className="text-left py-1">
+                                  <h4 className="text-[11px] font-bold text-slate-800 leading-tight">付费投放花费</h4>
+                                  <p className="text-[9px] text-slate-400 mb-1 leading-tight">Paid Ads</p>
+                                  <div className="flex items-baseline gap-1.5">
+                                    <span className="text-base font-sans font-bold text-blue-600 leading-tight">{formatUSD(adsTotal)}</span>
+                                    <span className="text-[9px] text-slate-400 font-mono font-medium">{adsVol}条</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Total Spend Summary */}
+                              <div className="p-4 bg-gradient-to-br from-blue-50/80 to-white border border-blue-100 rounded-2xl flex items-center gap-4">
+                                <div className="w-[64px] h-[64px] flex-shrink-0">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                      <Pie
+                                        data={totalSpend > 0 ? [
+                                          { name: '内容营销', value: contentTotal },
+                                          { name: '付费投放', value: adsTotal },
+                                        ] : [{ name: '无数据', value: 1 }]}
+                                        cx="50%" cy="50%"
+                                        innerRadius={22} outerRadius={30}
+                                        startAngle={90} endAngle={-270}
+                                        paddingAngle={totalSpend > 0 ? 3 : 0}
+                                        dataKey="value"
+                                        stroke="none"
+                                      >
+                                        {totalSpend > 0 ? (
+                                          <>
+                                            <Cell fill="#10b981" />
+                                            <Cell fill="#3b82f6" />
+                                          </>
+                                        ) : (
+                                          <Cell fill="#cbd5e1" />
+                                        )}
+                                      </Pie>
+                                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '10px', color: '#0f172a' }} />
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                </div>
+                                <div className="text-left py-1">
+                                  <h4 className="text-[11px] font-bold text-slate-800 leading-tight">营销总花费</h4>
+                                  <p className="text-[9px] text-slate-400 mb-1 leading-tight">Total Marketing Spend</p>
+                                  <span className="text-base font-sans font-bold text-slate-900 leading-tight">{formatUSD(totalSpend)}</span>
+                                  {totalSpend > 0 && (
+                                    <div className="mt-1 flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                      <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{contentPct}%</span>
+                                      <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{adsPct}%</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
                       
-                      <GtmMetricInput 
-                        label="推荐与裂变 (Referral)" 
-                        description="通过系统 APP 跳转了多少次"
-                        value={currentProject?.gtmStrategy.referral?.volume || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: { ...currentProject!.gtmStrategy.referral, volume: v } } })}
-                        icon={<Users size={14} className="text-purple-500" />}
-                      />
+                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                        <GtmMetricInput 
+                          label="推荐与裂变 (Referral)" 
+                          description="通过系统 APP 跳转了多少次"
+                          value={currentProject?.gtmStrategy.referral?.volume || 0} 
+                          onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: { ...currentProject!.gtmStrategy.referral, volume: v } } })}
+                          icon={<Users size={14} className="text-purple-500" />}
+                        />
 
-                      <GtmMetricInput 
-                        label="自传播 (Viral / Referral)" 
-                        description="用户分享了多少次对应的应用"
-                        value={currentProject?.gtmStrategy.viral?.volume || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, viral: { ...currentProject!.gtmStrategy.viral, volume: v } } })}
-                        icon={<Target size={14} className="text-rose-500" />}
-                      />
+                        <GtmMetricInput 
+                          label="自传播 (Viral / Referral)" 
+                          description="用户分享了多少次对应的应用"
+                          value={currentProject?.gtmStrategy.viral?.volume || 0} 
+                          onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, viral: { ...currentProject!.gtmStrategy.viral, volume: v } } })}
+                          icon={<Target size={14} className="text-rose-500" />}
+                        />
 
-                      <GtmMetricInput 
-                        label="自然搜索 (SEO / ASO)" 
-                        description="投入的 SEO 资源点数"
-                        value={currentProject?.gtmStrategy.seoAso?.volume || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: { ...currentProject!.gtmStrategy.seoAso, volume: v } } })}
-                        icon={<Search size={14} className="text-indigo-500" />}
-                      />
+                        <GtmMetricInput 
+                          label="自然搜索 (SEO / ASO)" 
+                          description="投入的 SEO 资源点数"
+                          value={currentProject?.gtmStrategy.seoAso?.volume || 0} 
+                          onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: { ...currentProject!.gtmStrategy.seoAso, volume: v } } })}
+                          icon={<Search size={14} className="text-indigo-500" />}
+                        />
+                      </div>
+
+                      {/* 获取用户转换 / User Acquisition & Conversion */}
+                      <div className="md:col-span-2 mt-10">
+                        {(() => {
+                          const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
+                          const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
+                          const referralVol = currentProject?.gtmStrategy.referral?.volume || 0;
+                          const seoVol = currentProject?.gtmStrategy.seoAso?.volume || 0;
+                          
+                          const kFactor = currentProject?.gtmStrategy.viral?.kFactor || 1.2;
+                          const adsCvr = currentProject?.gtmStrategy.paidAds?.cvr || 5;
+                          const refCvr = currentProject?.gtmStrategy.referral?.cvr || 10;
+                          
+                          // Reach calculation
+                          const contentReach = contentVol * 5000;
+                          const adsReach = adsVol * 2500;
+                          const seoReach = seoVol * 500;
+                          const totalImpressions = adsReach;
+                          
+                          // Conversion calculation
+                          const contentInstalls = 0;
+                          const adsInstalls = Math.floor(adsReach * (adsCvr / 100));
+                          const seoInstalls = Math.floor(seoReach * 0.08);
+                          const referralInstalls = Math.floor(referralVol * (refCvr / 100));
+                          
+                          const directInstalls = contentInstalls + adsInstalls + seoInstalls + referralInstalls;
+                          const viralInstalls = Math.floor(directInstalls * (kFactor - 1));
+                          const totalNewUsers = directInstalls + viralInstalls;
+                          
+                          const formatNum = (n: number) => n >= 10000 ? (n/10000).toFixed(1) + 'w' : n.toLocaleString();
+
+                          return (
+                            <div className="relative">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="p-1.5 bg-indigo-50 rounded-lg">
+                                  <TrendingUp size={14} className="text-indigo-600" />
+                                </div>
+                                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">获取用户转换 / User Acquisition</h3>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">曝光总量</p>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-sans font-bold text-slate-800">{formatNum(totalImpressions)}</span>
+                                    <span className="text-[10px] text-slate-400">次曝光</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">直接转化</p>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-sans font-bold text-emerald-600">+{formatNum(directInstalls)}</span>
+                                    <span className="text-[10px] text-slate-400">新用户</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl">
+                                  <p className="text-[10px] font-bold text-indigo-400 uppercase mb-1">病毒增长 (K={kFactor})</p>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-sans font-bold text-indigo-600">+{formatNum(viralInstalls)}</span>
+                                    <span className="text-[10px] text-indigo-400">裂变</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="p-4 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl shadow-lg shadow-indigo-200">
+                                  <p className="text-[10px] font-bold text-white/70 uppercase mb-1">总获客预估</p>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-sans font-bold text-white">{formatNum(totalNewUsers)}</span>
+                                    <span className="text-[10px] text-white/70">/月</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="mt-4 flex items-center gap-4 text-[9px] font-medium text-slate-400">
+                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 内容转化: {contentInstalls}</span>
+                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" /> 付费转化: {adsInstalls}</span>
+                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400" /> 推荐转化: {referralInstalls}</span>
+                                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> SEO转化: {seoInstalls}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
+
+
                   </div>
 
                   <div {...getPanelProps("gtm-cost", "lg:col-span-5 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full flex flex-col justify-between")}>
@@ -1327,7 +1555,14 @@ export default function App() {
                         const revenue = paidUsers * subPrice;
                         const totalCalls = mau * freeUses * 30;
                         const cost = totalCalls * costPerCall;
-                        const profit = revenue - cost;
+                        
+                        const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
+                        const contentCost = currentProject?.gtmStrategy.contentMarketing?.unitCost || 0;
+                        const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
+                        const adsCost = currentProject?.gtmStrategy.paidAds?.unitCost || 0;
+                        const marketingSpend = (contentVol * contentCost) + (adsVol * adsCost);
+                        
+                        const profit = revenue - cost - marketingSpend;
 
                         const formatUSD = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
 
@@ -1341,6 +1576,10 @@ export default function App() {
                               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">模型成本</span>
                               <span className="text-rose-500 font-sans font-bold text-lg">-{formatUSD(cost)} /月</span>
                             </div>
+                            <div className="flex justify-between items-center border-b border-white pb-4">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">营销成本</span>
+                              <span className="text-rose-500 font-sans font-bold text-lg">-{formatUSD(marketingSpend)} /月</span>
+                            </div>
                             <div className="flex justify-between items-center pt-2">
                               <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">预估运营毛利</span>
                               <div className="text-right">
@@ -1350,6 +1589,7 @@ export default function App() {
                           </>
                         );
                       })()}
+                      
                       {/* Growth Assumptions Panel */}
                       <div className="pt-12 border-t border-slate-100/60 relative mt-8">
                         <div className="absolute -top-3 left-0 bg-white px-3 text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">
@@ -1377,8 +1617,22 @@ export default function App() {
                                 <span className="text-xs text-slate-400 font-bold">$</span>
                                 <input 
                                   type="number" 
-                                  value={currentProject?.gtmStrategy.contentMarketing?.unitCost || 0}
+                                  value={currentProject?.gtmStrategy.contentMarketing?.unitCost || 5000}
                                   onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: { ...currentProject!.gtmStrategy.contentMarketing, unitCost: parseInt(e.target.value) || 0 } } })}
+                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Paid Ads Unit Cost */}
+                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">广告单价 (Ads Unit Cost)</label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400 font-bold">$</span>
+                                <input 
+                                  type="number" 
+                                  value={currentProject?.gtmStrategy.paidAds?.unitCost || 100}
+                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: { ...currentProject!.gtmStrategy.paidAds, unitCost: parseInt(e.target.value) || 0 } } })}
                                   className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
                                 />
                               </div>
@@ -1440,10 +1694,8 @@ export default function App() {
                                 />
                               </div>
                             </div>
-
                         </div>
                       </div>
-
                     </div>
                   </div>
 
@@ -1932,6 +2184,7 @@ function GtmMetricInput({ label, description, value, onChange, icon }: { label: 
             type="number" 
             value={value} 
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+            onFocus={(e) => e.target.select()}
             className="w-16 bg-white border border-slate-200 rounded-lg py-1 px-2 text-sm font-mono font-bold text-center text-slate-900 outline-none focus:border-zenith-accent/50 focus:ring-1 focus:ring-zenith-accent/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <button 
