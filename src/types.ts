@@ -18,11 +18,12 @@ export interface ProductData {
   };
   salesCycle?: 'Short' | 'Medium' | 'Long' | 'ExtraLong';
   gtmStrategy: {
-    contentMarketing: number;
-    paidAds: number;
-    referral: number;
-    outboundSales: number;
-    seoAso: number;
+    contentMarketing: { volume: number; unitCost: number; cvr: number };
+    paidAds: { volume: number; unitCost: number; cvr: number };
+    referral: { volume: number; unitCost: number; cvr: number };
+    viral: { volume: number; kFactor: number; cvr: number }; // Replaced outboundSales -> viral
+    seoAso: { volume: number; unitCost: number };
+    retentionRate: number;
   };
   costStructure?: {
     dailyFreeUses: number;

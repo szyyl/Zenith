@@ -1190,41 +1190,41 @@ export default function App() {
                       </div>
                       <GtmMetricInput 
                         label="内容营销 (Content)" 
-                        description="内容营销权重调整"
-                        value={currentProject?.gtmStrategy.contentMarketing || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: v } })}
+                        description="内容营销投入资源"
+                        value={currentProject?.gtmStrategy.contentMarketing?.volume || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: { ...currentProject!.gtmStrategy.contentMarketing, volume: v } } })}
                         icon={<FileInput size={14} className="text-emerald-500" />}
                       />
                       
                       <GtmMetricInput 
                         label="付费投放 (Paid Ads)" 
                         description="我们在社媒上投了多少条广告"
-                        value={currentProject?.gtmStrategy.paidAds || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: v } })}
+                        value={currentProject?.gtmStrategy.paidAds?.volume || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: { ...currentProject!.gtmStrategy.paidAds, volume: v } } })}
                         icon={<Zap size={14} className="text-blue-500" />}
                       />
                       
                       <GtmMetricInput 
                         label="推荐与裂变 (Referral)" 
                         description="通过系统 APP 跳转了多少次"
-                        value={currentProject?.gtmStrategy.referral || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: v } })}
+                        value={currentProject?.gtmStrategy.referral?.volume || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: { ...currentProject!.gtmStrategy.referral, volume: v } } })}
                         icon={<Users size={14} className="text-purple-500" />}
                       />
 
                       <GtmMetricInput 
-                        label="主动出击 (Outbound Sales)" 
+                        label="自传播 (Viral / Referral)" 
                         description="用户分享了多少次对应的应用"
-                        value={currentProject?.gtmStrategy.outboundSales || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, outboundSales: v } })}
+                        value={currentProject?.gtmStrategy.viral?.volume || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, viral: { ...currentProject!.gtmStrategy.viral, volume: v } } })}
                         icon={<Target size={14} className="text-rose-500" />}
                       />
 
                       <GtmMetricInput 
                         label="自然搜索 (SEO / ASO)" 
-                        description="自然搜索量呈现可数字化"
-                        value={currentProject?.gtmStrategy.seoAso || 0} 
-                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: v } })}
+                        description="投入的 SEO 资源点数"
+                        value={currentProject?.gtmStrategy.seoAso?.volume || 0} 
+                        onChange={(v) => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: { ...currentProject!.gtmStrategy.seoAso, volume: v } } })}
                         icon={<Search size={14} className="text-indigo-500" />}
                       />
                     </div>
@@ -1350,6 +1350,100 @@ export default function App() {
                           </>
                         );
                       })()}
+                      {/* Growth Assumptions Panel */}
+                      <div className="pt-12 border-t border-slate-100/60 relative mt-8">
+                        <div className="absolute -top-3 left-0 bg-white px-3 text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">
+                          转化与模型假设 / Growth Assumptions
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                            {/* Retention Rate */}
+                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">首月留存率 (Retention)</label>
+                              <div className="flex items-center gap-2">
+                                <input 
+                                  type="number" 
+                                  value={currentProject?.gtmStrategy.retentionRate || 0}
+                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, retentionRate: parseInt(e.target.value) || 0 } })}
+                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
+                                />
+                                <span className="text-xs text-slate-400 font-bold">%</span>
+                              </div>
+                            </div>
+                            
+                            {/* Content Cost */}
+                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">内容成本 (Unit Cost)</label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400 font-bold">$</span>
+                                <input 
+                                  type="number" 
+                                  value={currentProject?.gtmStrategy.contentMarketing?.unitCost || 0}
+                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: { ...currentProject!.gtmStrategy.contentMarketing, unitCost: parseInt(e.target.value) || 0 } } })}
+                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Paid Ads CVR */}
+                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">广告转化率 (Ads CVR)</label>
+                              <div className="flex items-center gap-2">
+                                <input 
+                                  type="number" 
+                                  value={currentProject?.gtmStrategy.paidAds?.cvr || 0}
+                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: { ...currentProject!.gtmStrategy.paidAds, cvr: parseInt(e.target.value) || 0 } } })}
+                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
+                                />
+                                <span className="text-xs text-slate-400 font-bold">%</span>
+                              </div>
+                            </div>
+
+                            {/* Viral K-Factor */}
+                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">病毒系数 (K-Factor)</label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400 font-bold">K=</span>
+                                <input 
+                                  type="number" 
+                                  step="0.1"
+                                  value={currentProject?.gtmStrategy.viral?.kFactor || 0}
+                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, viral: { ...currentProject!.gtmStrategy.viral, kFactor: parseFloat(e.target.value) || 0 } } })}
+                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Referral CVR */}
+                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">裂变转化率 (Ref. CVR)</label>
+                              <div className="flex items-center gap-2">
+                                <input 
+                                  type="number" 
+                                  value={currentProject?.gtmStrategy.referral?.cvr || 0}
+                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: { ...currentProject!.gtmStrategy.referral, cvr: parseInt(e.target.value) || 0 } } })}
+                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
+                                />
+                                <span className="text-xs text-slate-400 font-bold">%</span>
+                              </div>
+                            </div>
+
+                            {/* SEO Cost */}
+                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">搜索单点成本 (SEO Cost)</label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400 font-bold">$</span>
+                                <input 
+                                  type="number" 
+                                  value={currentProject?.gtmStrategy.seoAso?.unitCost || 0}
+                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: { ...currentProject!.gtmStrategy.seoAso, unitCost: parseInt(e.target.value) || 0 } } })}
+                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
+                                />
+                              </div>
+                            </div>
+
+                        </div>
+                      </div>
+
                     </div>
                   </div>
 
@@ -1359,14 +1453,14 @@ export default function App() {
                     <div className="h-[250px] w-full flex items-center justify-center">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie
-                            data={[
-                              { name: '内容营销', value: currentProject?.gtmStrategy.contentMarketing || 0 },
-                              { name: '付费投放', value: currentProject?.gtmStrategy.paidAds || 0 },
-                              { name: '推荐与裂变', value: currentProject?.gtmStrategy.referral || 0 },
-                              { name: '主动出击', value: currentProject?.gtmStrategy.outboundSales || 0 },
-                              { name: '自然搜索', value: currentProject?.gtmStrategy.seoAso || 0 },
-                            ]}
+                            <Pie
+                              data={[
+                                { name: '内容营销', value: currentProject?.gtmStrategy.contentMarketing?.volume || 0 },
+                                { name: '付费投放', value: currentProject?.gtmStrategy.paidAds?.volume || 0 },
+                                { name: '推荐与裂变', value: currentProject?.gtmStrategy.referral?.volume || 0 },
+                                { name: '自传播', value: currentProject?.gtmStrategy.viral?.volume || 0 },
+                                { name: '自然搜索', value: currentProject?.gtmStrategy.seoAso?.volume || 0 },
+                              ]}
                             cx="50%"
                             cy="50%"
                             innerRadius={60}
