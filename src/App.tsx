@@ -3,104 +3,72 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  LayoutDashboard, 
-  Compass, 
-  BrainCircuit, 
-  ShieldAlert, 
-  Activity, 
-  FileOutput, 
-  FileInput,
-  Search,
-  ChevronRight,
-  ChevronDown,
-  Settings,
-  Plus,
-  Zap,
-  LineChart,
-  Target,
+import React, {useEffect, useRef, useState} from 'react';
+import {
+  Activity,
   AlertTriangle,
-  CheckCircle2,
-  Users,
-  Link as LinkIcon,
   ArrowRight,
+  BrainCircuit,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Compass,
+  DollarSign,
+  FileInput,
+  FileOutput,
+  LayoutDashboard,
+  Link as LinkIcon,
+  Plus,
+  Search,
+  Settings,
+  ShieldAlert,
+  Target,
+  Users,
   X,
-  DollarSign
+  Zap,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { AppState, ProductData, SimulationResult } from './types';
-import { generateStrategyResponse, runSandboxSimulation, ModelMode, analyzeAssetFromLink, analyzeAssetFromFile } from './services/geminiService';
+import {AnimatePresence, motion} from 'motion/react';
+import type {AppState, ProductData, SimulationResult} from './types';
+import {
+  analyzeAssetFromFile,
+  analyzeAssetFromLink,
+  generateStrategyResponse,
+  type ModelMode,
+  runSandboxSimulation,
+} from './services/geminiService';
 import ReactMarkdown from 'react-markdown';
-import { 
-  LineChart as ReLineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
+import {
   Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart as ReLineChart,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
   Radar,
   RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  PieChart,
-  Pie,
-  Cell
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
-
-// Mock data for initial state
-const INITIAL_PROJECT: ProductData = {
-  id: "default-1",
-  name: "未命名项目",
-  coreValue: "",
-  usp: "",
-  productComposition: "",
-  userStories: [],
-  directCompetitors: "",
-  potentialThreats: "",
-  userPersona: "",
-  gtmModel: 'PLG',
-  pricingModel: 'Freemium',
-  targetMarket: {
-    country: '',
-    age: '',
-    occupation: '',
-    income: ''
-  },
-  salesCycle: 'Short',
-  gtmStrategy: {
-    contentMarketing: 0,
-    paidAds: 0,
-    referral: 0,
-    outboundSales: 0,
-    seoAso: 0
-  },
-  costStructure: {
-    dailyFreeUses: 5,
-    costPerCall: 0.01,
-    targetMau: 100000,
-    paidConversionRate: 20,
-    monthlySubscription: 19.99
-  },
-  scores: {
-    feasibility: 0,
-    marketPotential: 0,
-    riskResilience: 0
-  }
-};
-
-const MOCK_CHART_DATA = [
-  { name: '1月', users: 400, revenue: 2400 },
-  { name: '2月', users: 1200, revenue: 8000 },
-  { name: '3月', users: 2100, revenue: 15000 },
-  { name: '4月', users: 3800, revenue: 32000 },
-  { name: '5月', users: 5100, revenue: 48000 },
-  { name: '6月', users: 7200, revenue: 75000 },
-];
+import {
+  AUTO_FILL_TAGS,
+  createProject,
+  DEFAULT_PROJECT_ID,
+  DEFAULT_PROJECT_NAME,
+  DEFAULT_SUBMODULE_BY_MODULE,
+  MOCK_CHART_DATA,
+  MODEL_OPTIONS,
+  SIDEBAR_MODULES,
+  SIMULATION_CSV_HEADERS,
+  TARGET_MARKET_COUNTRIES,
+} from './appConfig';
+import {createShortId, downloadTextFile, toCsvCell} from './appUtils';
 
 const ScoreDetail = ({ label, score, desc }: { label: string, score: number, desc: string }) => (
   <div className="space-y-2">
@@ -122,8 +90,8 @@ const ScoreDetail = ({ label, score, desc }: { label: string, score: number, des
 
 export default function App() {
   const [state, setState] = useState<AppState>({
-    projects: [INITIAL_PROJECT],
-    currentProjectId: 'default-1',
+    projects: [createProject(DEFAULT_PROJECT_ID)],
+    currentProjectId: DEFAULT_PROJECT_ID,
     simulations: [],
     activeModule: 'sandbox',
     activeSubModule: 'sandbox-engine',
@@ -131,11 +99,51 @@ export default function App() {
   });
 
   const currentProject = state.projects.find(p => p.id === state.currentProjectId) || state.projects[0];
+  const advisorSessionId = useRef(createShortId(5).toUpperCase()).current;
 
   const updateCurrentProject = (updates: Partial<ProductData>) => {
     setState(s => ({
       ...s,
       projects: s.projects.map(p => p.id === s.currentProjectId ? { ...p, ...updates } : p)
+    }));
+  };
+
+  const setActiveSubModule = (subModule: string) => {
+    setState(s => ({ ...s, activeSubModule: subModule }));
+  };
+
+  const setModuleAndSubModule = (module: AppState['activeModule'], subModule: string) => {
+    setState(s => ({ ...s, activeModule: module, activeSubModule: subModule }));
+  };
+
+  const selectProject = (projectId: string) => {
+    setState(s => ({ ...s, currentProjectId: projectId }));
+  };
+
+  const removeProject = (projectId: string) => {
+    setState(s => {
+      const nextProjects = s.projects.filter(project => project.id !== projectId);
+      return {
+        ...s,
+        projects: nextProjects,
+        currentProjectId:
+          s.currentProjectId === projectId
+            ? nextProjects[nextProjects.length - 1].id
+            : s.currentProjectId,
+      };
+    });
+  };
+
+  const createNewProject = () => {
+    const newId = createShortId();
+    setState(s => ({
+      ...s,
+      projects: [
+        ...s.projects,
+        createProject(newId, `${DEFAULT_PROJECT_NAME} ${s.projects.length + 1}`),
+      ],
+      currentProjectId: newId,
+      activeModule: 'input',
     }));
   };
 
@@ -145,40 +153,49 @@ export default function App() {
   const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'success'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [linkInput, setLinkInput] = useState('');
-  const handleLinkSubmit = async () => {
-    if (!linkInput) return;
+  const runAssetAnalysis = async (
+    analyze: () => Promise<Partial<ProductData>>,
+    errorLog: string,
+    errorMessage: string,
+    onSuccess?: () => void,
+  ) => {
     setUploadState('uploading');
     try {
-      const data = await analyzeAssetFromLink(linkInput);
+      const data = await analyze();
       updateCurrentProject(data);
       setUploadState('success');
-      setLinkInput('');
+      onSuccess?.();
     } catch (error) {
-      console.error("Link analysis failed:", error);
+      console.error(errorLog, error);
       setUploadState('idle');
-      alert("分析失败，请检查链接或稍后重试");
+      alert(errorMessage);
     }
+  };
+
+  const handleLinkSubmit = async () => {
+    if (!linkInput) return;
+    await runAssetAnalysis(
+      () => analyzeAssetFromLink(linkInput),
+      'Link analysis failed:',
+      '分析失败，请检查链接或稍后重试',
+      () => setLinkInput(''),
+    );
   };
 
   const handleUploadClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setState(s => ({ ...s, activeSubModule: 'input-upload' }));
+    setActiveSubModule('input-upload');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setUploadState('uploading');
-      try {
-        const data = await analyzeAssetFromFile(file);
-        updateCurrentProject(data);
-        setUploadState('success');
-      } catch (error) {
-        console.error("File analysis failed:", error);
-        setUploadState('idle');
-        alert("文件分析失败，请稍后重试");
-      }
-    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    await runAssetAnalysis(
+      () => analyzeAssetFromFile(file),
+      'File analysis failed:',
+      '文件分析失败，请稍后重试',
+    );
   };
 
   const toggleExpand = (module: string) => {
@@ -197,23 +214,10 @@ export default function App() {
     setState(s => ({
       ...s, 
       activeModule: module, 
-      activeSubModule: subModule || getDefaultSubModule(module)
+      activeSubModule: subModule || DEFAULT_SUBMODULE_BY_MODULE[module]
     }));
     // Also expand when setting active
     setExpandedModules(prev => new Set(prev).add(module));
-  };
-
-  const getDefaultSubModule = (module: AppState['activeModule']): string => {
-    switch(module) {
-      case 'input': return 'input-identity';
-      case 'gtm': return 'gtm-model';
-      case 'advisor': return 'advisor-chat';
-      case 'sandbox': return 'sandbox-engine';
-      case 'monitoring': return 'monitoring-live';
-      case 'diagnostics': return 'diagnostics-radar';
-      case 'generator': return 'generator-ppt';
-      default: return '';
-    }
   };
 
   const getPanelProps = (id: string, baseClassName: string) => {
@@ -222,21 +226,23 @@ export default function App() {
       id,
       onClick: (e: React.MouseEvent) => {
         e.stopPropagation();
-        setState(s => ({ ...s, activeSubModule: id }));
+        setActiveSubModule(id);
       },
       className: `${baseClassName} cursor-pointer transition-all duration-300 ${isActive ? 'ring-2 ring-zenith-accent border-transparent shadow-lg shadow-zenith-accent/10' : 'hover:border-slate-300'}`
     };
   };
 
   useEffect(() => {
-    if (state.activeSubModule) {
-      setTimeout(() => {
-        const element = document.getElementById(state.activeSubModule!);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 50);
-    }
+    if (!state.activeSubModule) return;
+
+    const timeoutId = window.setTimeout(() => {
+      const element = document.getElementById(state.activeSubModule);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+
+    return () => window.clearTimeout(timeoutId);
   }, [state.activeSubModule, state.activeModule]);
 
   const [modelMode, setModelMode] = useState<ModelMode>('fast');
@@ -259,7 +265,7 @@ export default function App() {
     const resultText = await runSandboxSimulation(scenario, currentProject);
     
     const newSim: SimulationResult = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: createShortId(),
       timestamp: Date.now(),
       scenario,
       outcome: resultText?.includes("Success") || resultText?.includes("成功") ? "成功" : "检测到风险",
@@ -273,6 +279,33 @@ export default function App() {
       simulations: [newSim, ...prev.simulations],
       isSimulating: false
     }));
+  };
+
+  const downloadSimulationJson = (simulation: SimulationResult) => {
+    downloadTextFile(
+      `simulation-${simulation.id}.json`,
+      'application/json',
+      JSON.stringify(simulation, null, 2),
+    );
+  };
+
+  const downloadSimulationCsv = (simulation: SimulationResult) => {
+    const row = [
+      simulation.id,
+      new Date(simulation.timestamp).toISOString(),
+      simulation.scenario,
+      simulation.outcome,
+      simulation.impact,
+      simulation.risks.join(', '),
+      simulation.recommendations.join(', '),
+      simulation.inferenceCost ?? '',
+    ];
+
+    downloadTextFile(
+      `simulation-${simulation.id}.csv`,
+      'text/csv',
+      `${SIMULATION_CSV_HEADERS.join(',')}\n${row.map(toCsvCell).join(',')}`,
+    );
   };
 
   return (
@@ -290,114 +323,20 @@ export default function App() {
         </div>
 
         <nav className="flex-1 px-6 space-y-1 py-8 overflow-y-auto scrollbar-hide">
-          <SidebarItem 
-            icon={<LayoutDashboard size={18} />} 
-            label="灵感实验室" 
-            active={state.activeModule === 'input'} 
-            isExpanded={expandedModules.has('input')}
-            onToggleExpand={() => toggleExpand('input')}
-            onClick={() => setActiveModule('input')}
-            subItems={[
-              { id: 'input-identity', label: '核心身份' },
-              { id: 'input-stories', label: '用户故事' },
-              { id: 'input-competition', label: '竞品格局' },
-              { id: 'input-upload', label: '资产上传' },
-              { id: 'input-persona', label: '用户画像' }
-            ]}
-            activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeModule: 'input', activeSubModule: id}))}
-          />
-          <SidebarItem 
-            icon={<Target size={18} />} 
-            label="GTM 营销布局" 
-            active={state.activeModule === 'gtm'} 
-            isExpanded={expandedModules.has('gtm')}
-            onToggleExpand={() => toggleExpand('gtm')}
-            onClick={() => setActiveModule('gtm')}
-            subItems={[
-              { id: 'gtm-model', label: '增长模型' },
-              { id: 'gtm-mix', label: '渠道配比' },
-              { id: 'gtm-roi', label: '渠道 ROI' },
-              { id: 'gtm-insights', label: 'AI 洞察' }
-            ]}
-            activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeModule: 'gtm', activeSubModule: id}))}
-          />
-          <SidebarItem 
-            icon={<ShieldAlert size={18} />} 
-            label="动态沙盘推演" 
-            active={state.activeModule === 'sandbox'} 
-            isExpanded={expandedModules.has('sandbox')}
-            onToggleExpand={() => toggleExpand('sandbox')}
-            onClick={() => setActiveModule('sandbox')}
-            subItems={[
-              { id: 'sandbox-engine', label: '推演引擎' },
-              { id: 'sandbox-tuning', label: '参数调优' },
-              { id: 'sandbox-history', label: '推演历史' }
-            ]}
-            activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeModule: 'sandbox', activeSubModule: id}))}
-          />
-          <SidebarItem 
-            icon={<Activity size={18} />} 
-            label="诊断与评分" 
-            active={state.activeModule === 'diagnostics'} 
-            isExpanded={expandedModules.has('diagnostics')}
-            onToggleExpand={() => toggleExpand('diagnostics')}
-            onClick={() => setActiveModule('diagnostics')}
-            subItems={[
-              { id: 'diagnostics-radar', label: '健康雷达' },
-              { id: 'diagnostics-heatmap', label: '风险热图' },
-              { id: 'diagnostics-breakdown', label: '评分透明化' }
-            ]}
-            activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeModule: 'diagnostics', activeSubModule: id}))}
-          />
-          <SidebarItem 
-            icon={<LineChart size={18} />} 
-            label="监控哨所" 
-            active={state.activeModule === 'monitoring'} 
-            isExpanded={expandedModules.has('monitoring')}
-            onToggleExpand={() => toggleExpand('monitoring')}
-            onClick={() => setActiveModule('monitoring')}
-            subItems={[
-              { id: 'monitoring-live', label: '实时指标' },
-              { id: 'monitoring-sentiment', label: '情感趋势' },
-              { id: 'monitoring-backtest', label: '预测回测' }
-            ]}
-            activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeModule: 'monitoring', activeSubModule: id}))}
-          />
-          <SidebarItem 
-            icon={<FileOutput size={18} />} 
-            label="资产生成" 
-            active={state.activeModule === 'generator'} 
-            isExpanded={expandedModules.has('generator')}
-            onToggleExpand={() => toggleExpand('generator')}
-            onClick={() => setActiveModule('generator')}
-            subItems={[
-              { id: 'generator-ppt', label: 'PPT 报告' },
-              { id: 'generator-prd', label: 'PRD V2.0' },
-              { id: 'generator-marketing', label: '营销素材' }
-            ]}
-            activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeModule: 'generator', activeSubModule: id}))}
-          />
-          <SidebarItem 
-            icon={<BrainCircuit size={18} />} 
-            label="进化顾问" 
-            active={state.activeModule === 'advisor'} 
-            isExpanded={expandedModules.has('advisor')}
-            onToggleExpand={() => toggleExpand('advisor')}
-            onClick={() => setActiveModule('advisor')}
-            subItems={[
-              { id: 'advisor-chat', label: '进化对话' },
-              { id: 'advisor-knowledge', label: '知识库' },
-              { id: 'advisor-history', label: '历史推演' }
-            ]}
-            activeSubId={state.activeSubModule}
-            onSubClick={(id) => setState(s => ({...s, activeModule: 'advisor', activeSubModule: id}))}
-          />
+          {SIDEBAR_MODULES.map(({ id, icon: Icon, label, subItems }) => (
+            <SidebarItem
+              key={id}
+              icon={<Icon size={18} />}
+              label={label}
+              active={state.activeModule === id}
+              isExpanded={expandedModules.has(id)}
+              onToggleExpand={() => toggleExpand(id)}
+              onClick={() => setActiveModule(id)}
+              subItems={subItems}
+              activeSubId={state.activeSubModule}
+              onSubClick={(subItemId) => setModuleAndSubModule(id, subItemId)}
+            />
+          ))}
         </nav>
 
         <div className="p-6 space-y-3">
@@ -411,7 +350,9 @@ export default function App() {
                 <BrainCircuit size={16} className="text-zenith-accent" />
                 <div className="text-left">
                   <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">AI 模型</p>
-                  <p className="text-xs font-medium text-slate-700">{modelMode === 'fast' ? 'Gemini Flash' : 'Gemini Pro'}</p>
+                  <p className="text-xs font-medium text-slate-700">
+                    {MODEL_OPTIONS.find(option => option.mode === modelMode)?.displayName ?? 'Gemini Pro'}
+                  </p>
                 </div>
               </div>
               <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${showSettings ? 'rotate-180' : ''}`} />
@@ -425,30 +366,27 @@ export default function App() {
                   className="overflow-hidden"
                 >
                   <div className="space-y-1.5 px-1 py-2">
-                    <button 
-                      onClick={() => { setModelMode('fast'); setShowSettings(false); }}
-                      className={`w-full text-left px-4 py-3 rounded-xl transition-all ${modelMode === 'fast' ? 'bg-zenith-accent/10 border border-zenith-accent/20' : 'hover:bg-slate-50 border border-transparent'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`text-xs font-bold ${modelMode === 'fast' ? 'text-zenith-accent' : 'text-slate-700'}`}>⚡ 快速模式</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">Gemini Flash · 低延迟响应</p>
-                        </div>
-                        {modelMode === 'fast' && <div className="w-2 h-2 rounded-full bg-zenith-accent" />}
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => { setModelMode('reasoning'); setShowSettings(false); }}
-                      className={`w-full text-left px-4 py-3 rounded-xl transition-all ${modelMode === 'reasoning' ? 'bg-zenith-accent/10 border border-zenith-accent/20' : 'hover:bg-slate-50 border border-transparent'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`text-xs font-bold ${modelMode === 'reasoning' ? 'text-zenith-accent' : 'text-slate-700'}`}>🧠 深度推理</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">Gemini Pro · 复杂逻辑分析</p>
-                        </div>
-                        {modelMode === 'reasoning' && <div className="w-2 h-2 rounded-full bg-zenith-accent" />}
-                      </div>
-                    </button>
+                    {MODEL_OPTIONS.map((option) => {
+                      const isActive = modelMode === option.mode;
+                      return (
+                        <button
+                          key={option.mode}
+                          onClick={() => {
+                            setModelMode(option.mode);
+                            setShowSettings(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-zenith-accent/10 border border-zenith-accent/20' : 'hover:bg-slate-50 border border-transparent'}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className={`text-xs font-bold ${isActive ? 'text-zenith-accent' : 'text-slate-700'}`}>{option.label}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">{option.description}</p>
+                            </div>
+                            {isActive && <div className="w-2 h-2 rounded-full bg-zenith-accent" />}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}
@@ -475,7 +413,7 @@ export default function App() {
             {state.projects.map(p => (
               <div 
                 key={p.id}
-                onClick={() => setState(s => ({...s, currentProjectId: p.id}))}
+                onClick={() => selectProject(p.id)}
                 className={`group relative flex items-center gap-3 px-6 py-3 rounded-t-xl border-t border-x cursor-pointer transition-all min-w-32 max-w-xs flex-shrink-0 ${state.currentProjectId === p.id ? 'bg-white border-slate-200 text-zenith-accent z-10 before:absolute before:-bottom-px before:left-0 before:right-0 before:h-px before:bg-white' : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100 shadow-inner'}`}
               >
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${state.currentProjectId === p.id ? 'bg-zenith-accent shadow-[0_0_8px_rgba(0,122,255,0.4)]' : 'bg-slate-300 group-hover:bg-slate-400'}`} />
@@ -484,14 +422,7 @@ export default function App() {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      setState(s => {
-                        const newProjects = s.projects.filter(proj => proj.id !== p.id);
-                        return {
-                          ...s,
-                          projects: newProjects,
-                          currentProjectId: s.currentProjectId === p.id ? newProjects[newProjects.length - 1].id : s.currentProjectId
-                        };
-                      });
+                      removeProject(p.id);
                     }}
                     className="p-1 rounded-md hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 absolute right-2"
                   >
@@ -504,15 +435,7 @@ export default function App() {
 
           <div className="flex items-center gap-6">
             <button 
-              onClick={() => {
-                const newId = Math.random().toString(36).substr(2, 9);
-                setState(s => ({
-                  ...s,
-                  projects: [...s.projects, { ...INITIAL_PROJECT, id: newId, name: `未命名项目 ${s.projects.length + 1}` }],
-                  currentProjectId: newId,
-                  activeModule: 'input'
-                }));
-              }}
+              onClick={createNewProject}
               className="bg-slate-900 text-white px-6 py-2 rounded-2xl text-sm font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-md shrink-0"
             >
               <Plus size={18} />
@@ -659,13 +582,7 @@ export default function App() {
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sim, null, 2));
-                                  const downloadAnchorNode = document.createElement('a');
-                                  downloadAnchorNode.setAttribute("href",     dataStr);
-                                  downloadAnchorNode.setAttribute("download", `simulation-${sim.id}.json`);
-                                  document.body.appendChild(downloadAnchorNode);
-                                  downloadAnchorNode.click();
-                                  downloadAnchorNode.remove();
+                                  downloadSimulationJson(sim);
                                 }}
                                 className="text-[10px] text-slate-500 hover:text-zenith-accent flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm"
                               >
@@ -674,25 +591,7 @@ export default function App() {
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const headers = ['ID', 'Timestamp', 'Scenario', 'Outcome', 'Impact', 'Risks', 'Recommendations', 'Inference Cost'];
-                                  const row = [
-                                    sim.id,
-                                    new Date(sim.timestamp).toISOString(),
-                                    `"${sim.scenario.replace(/"/g, '""')}"`,
-                                    sim.outcome,
-                                    `"${sim.impact.replace(/"/g, '""')}"`,
-                                    `"${sim.risks.join(', ')}"`,
-                                    `"${sim.recommendations.join(', ')}"`,
-                                    sim.inferenceCost || ''
-                                  ];
-                                  const csvContent = headers.join(',') + '\n' + row.join(',');
-                                  const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-                                  const downloadAnchorNode = document.createElement('a');
-                                  downloadAnchorNode.setAttribute("href",     dataStr);
-                                  downloadAnchorNode.setAttribute("download", `simulation-${sim.id}.csv`);
-                                  document.body.appendChild(downloadAnchorNode);
-                                  downloadAnchorNode.click();
-                                  downloadAnchorNode.remove();
+                                  downloadSimulationCsv(sim);
                                 }}
                                 className="text-[10px] text-slate-500 hover:text-zenith-accent flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm"
                               >
@@ -751,7 +650,7 @@ export default function App() {
                         <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">Zenith AI 实时在线</span>
                       </div>
                       <div className="text-[10px] uppercase tracking-[0.1em] font-mono text-slate-500">
-                        Session ID: {Math.random().toString(36).substring(7).toUpperCase()}
+                        Session ID: {advisorSessionId}
                       </div>
                     </div>
 
@@ -795,7 +694,7 @@ export default function App() {
                           type="text" 
                           value={chatInput}
                           onChange={(e) => setChatInput(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                           placeholder="在此输入你的想法 or 问题..."
                           className="w-full bg-white border border-slate-200 rounded-full pl-6 pr-16 py-4 outline-none focus:border-zenith-accent/30 focus:ring-4 focus:ring-zenith-accent/5 transition-all font-light tracking-wide text-slate-900 placeholder:text-slate-400"
                         />
@@ -996,7 +895,7 @@ export default function App() {
                         <div className="w-full mt-auto">
                           <p className="text-[10px] text-slate-400 mb-2 uppercase tracking-wider font-bold text-left">AI 将自动填充</p>
                           <div className="flex flex-wrap gap-1.5">
-                            {['核心身份', '用户故事', '竞品格局', '用户画像'].map(tag => (
+                            {AUTO_FILL_TAGS.map(tag => (
                               <span key={tag} className="px-2.5 py-1 bg-zenith-accent/5 border border-zenith-accent/15 rounded-lg text-[10px] text-zenith-accent font-medium">
                                 {tag}
                               </span>
@@ -1019,7 +918,7 @@ export default function App() {
                           <p className="text-xs text-slate-400">正在提取核心信息并填充各模块...</p>
                         </div>
                         <div className="flex gap-2">
-                          {['核心身份', '用户故事', '竞品格局', '用户画像'].map((tag, i) => (
+                          {AUTO_FILL_TAGS.map((tag, i) => (
                             <motion.span 
                               key={tag}
                               initial={{ opacity: 0.3 }}
@@ -1046,7 +945,7 @@ export default function App() {
                           <p className="text-xs text-slate-500">已成功填充以下模块</p>
                         </div>
                         <div className="flex flex-wrap gap-1.5 justify-center">
-                          {['核心身份', '用户故事', '竞品格局', '用户画像'].map((tag, i) => (
+                          {AUTO_FILL_TAGS.map((tag, i) => (
                             <motion.span 
                               key={tag}
                               initial={{ opacity: 0, y: 10 }}
@@ -1227,68 +1126,9 @@ export default function App() {
                             className="bg-slate-50 border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:border-indigo-400 focus:bg-white w-full shadow-sm transition-all"
                           />
                           <datalist id="countries-list">
-                            <option value="中国" />
-                            <option value="中国台湾" />
-                            <option value="米国 (美国)" />
-                            <option value="美国" />
-                            <option value="英国" />
-                            <option value="小日本" />
-                            <option value="德国" />
-                            <option value="法国" />
-                            <option value="俄罗斯" />
-                            <option value="加拿大" />
-                            <option value="澳大利亚" />
-                            <option value="巴西" />
-                            <option value="印度" />
-                            <option value="韩国" />
-                            <option value="新加坡" />
-                            <option value="意大利" />
-                            <option value="西班牙" />
-                            <option value="墨西哥" />
-                            <option value="印度尼西亚" />
-                            <option value="沙特阿拉伯" />
-                            <option value="土耳其" />
-                            <option value="荷兰" />
-                            <option value="瑞士" />
-                            <option value="瑞典" />
-                            <option value="挪威" />
-                            <option value="丹麦" />
-                            <option value="芬兰" />
-                            <option value="希腊" />
-                            <option value="葡萄牙" />
-                            <option value="爱尔兰" />
-                            <option value="奥地利" />
-                            <option value="比利时" />
-                            <option value="捷克" />
-                            <option value="波兰" />
-                            <option value="匈牙利" />
-                            <option value="罗马尼亚" />
-                            <option value="越南" />
-                            <option value="泰国" />
-                            <option value="马来西亚" />
-                            <option value="菲律宾" />
-                            <option value="哈萨克斯坦" />
-                            <option value="阿拉伯联合酋长国" />
-                            <option value="以色列" />
-                            <option value="埃及" />
-                            <option value="南非" />
-                            <option value="尼日利亚" />
-                            <option value="阿根廷" />
-                            <option value="智利" />
-                            <option value="哥伦比亚" />
-                            <option value="秘鲁" />
-                            <option value="新西兰" />
-                            <option value="乌克兰" />
-                            <option value="巴基斯坦" />
-                            <option value="孟加拉国" />
-                            <option value="伊朗" />
-                            <option value="伊拉克" />
-                            <option value="阿尔及利亚" />
-                            <option value="摩洛哥" />
-                            <option value="肯尼亚" />
-                            <option value="埃塞俄比亚" />
-                            <option value="加纳" />
-                            <option value="坦桑尼亚" />
+                            {TARGET_MARKET_COUNTRIES.map(country => (
+                              <option key={country} value={country} />
+                            ))}
                           </datalist>
                           <input 
                             placeholder="年龄段..." 
