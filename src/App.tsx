@@ -1631,64 +1631,7 @@ export default function App() {
 
 
 
-                  {/* Row 2: Mix & Insights */}
-                  <div {...getPanelProps("gtm-mix", "lg:col-span-7 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
-                    <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500">渠道配比可视化 / Channel Mix</h3>
-                    <div className="h-[250px] w-full flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                              data={[
-                                { name: '内容营销', value: currentProject?.gtmStrategy.contentMarketing?.volume || 0 },
-                                { name: '付费投放', value: currentProject?.gtmStrategy.paidAds?.volume || 0 },
-                                { name: '推荐与裂变', value: currentProject?.gtmStrategy.referral?.volume || 0 },
-                                { name: '自传播', value: currentProject?.gtmStrategy.viral?.volume || 0 },
-                                { name: '自然搜索', value: currentProject?.gtmStrategy.seoAso?.volume || 0 },
-                              ]}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                          >
-                            <Cell fill="#34d399" />
-                            <Cell fill="#60a5fa" />
-                            <Cell fill="#c084fc" />
-                            <Cell fill="#fbbf24" />
-                            <Cell fill="#22d3ee" />
-                          </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', fontSize: '12px', color: '#0f172a' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="flex justify-center flex-wrap gap-4 mt-2">
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400" /> 内容
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
-                        <div className="w-2 h-2 rounded-full bg-blue-400" /> 付费
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
-                        <div className="w-2 h-2 rounded-full bg-purple-400" /> 裂变
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
-                        <div className="w-2 h-2 rounded-full bg-amber-400" /> 主动
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
-                        <div className="w-2 h-2 rounded-full bg-cyan-400" /> 搜索
-                      </div>
-                    </div>
-                  </div>
 
-                  <div {...getPanelProps("gtm-roi", "lg:col-span-5 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
-                    <h3 className="text-xs uppercase tracking-[0.3em] font-bold text-slate-500">预测渠道 ROI / Projections</h3>
-                    <div className="space-y-8">
-                      <RoiItem label="TikTok 广告" roi="4.2x" confidence={85} />
-                      <RoiItem label="领英内容" roi="2.8x" confidence={92} />
-                      <RoiItem label="谷歌搜索" roi="1.5x" confidence={70} />
-                    </div>
-                  </div>
 
 
                 </div>
