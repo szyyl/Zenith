@@ -10,6 +10,7 @@ import {
   ArrowRight,
   BarChart3,
   BrainCircuit,
+  Calculator,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -1462,7 +1463,9 @@ export default function App() {
                   </div>
 
                   <div {...getPanelProps("gtm-cost", "lg:col-span-5 glass-panel p-6 space-y-4 border-slate-200 bg-white h-full flex flex-col justify-between")}>
-                    
+                    <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2 mb-2">
+                      <Calculator size={12} className="text-indigo-500" />产品运营成本计算 / COST CALCULATOR
+                    </h3>
                     <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                       {/* Daily Free Uses Slider */}
                       <div>
