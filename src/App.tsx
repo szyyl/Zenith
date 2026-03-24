@@ -1092,8 +1092,8 @@ export default function App() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
                   {/* Row 1: Model & ROI */}
-                  <div {...getPanelProps("gtm-model", "lg:col-span-7 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
+                  <div {...getPanelProps("gtm-model", "lg:col-span-7 glass-panel p-6 space-y-4 border-slate-200 bg-white h-full")}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4 border-b border-slate-100">
                       <div className="space-y-3">
                         <h3 className="text-[10px] uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2">
                           <Compass size={12} className="text-zenith-accent" />增长模型 / Growth Model
@@ -1185,7 +1185,7 @@ export default function App() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-8 border-t border-slate-100/60 relative">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 pt-4 border-t border-slate-100/60 relative">
                       <div className="absolute -top-3 left-0 bg-white px-3 text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">
                         执行指标 / Execution Metrics
                       </div>
@@ -1217,7 +1217,7 @@ export default function App() {
                       />
 
                       {/* 营销花费模块 / Marketing Spend */}
-                      <div className="md:col-span-2 pt-2 mb-2">
+                      <div className="md:col-span-2 pt-0 mb-0">
                         {(() => {
                           const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
                           const contentCost = currentProject?.gtmStrategy.contentMarketing?.unitCost || 0;
@@ -1344,7 +1344,7 @@ export default function App() {
                         })()}
                       </div>
                       
-                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 mt-2">
+                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 mt-0">
                         <GtmMetricInput 
                           label="推荐与裂变 (Referral)" 
                           description="通过系统 APP 跳转了多少次"
@@ -1371,7 +1371,7 @@ export default function App() {
                       </div>
 
                       {/* 获取用户转换 / User Acquisition & Conversion */}
-                      <div className="md:col-span-2 mt-6">
+                      <div className="md:col-span-2 mt-4">
                         {(() => {
                           const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
                           const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
@@ -1458,9 +1458,9 @@ export default function App() {
 
                   </div>
 
-                  <div {...getPanelProps("gtm-cost", "lg:col-span-5 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full flex flex-col justify-between")}>
+                  <div {...getPanelProps("gtm-cost", "lg:col-span-5 glass-panel p-6 space-y-4 border-slate-200 bg-white h-full flex flex-col justify-between")}>
                     
-                    <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                       {/* Daily Free Uses Slider */}
                       <div>
                         <div className="flex justify-between text-xs font-bold text-slate-500 mb-4">
@@ -1577,7 +1577,7 @@ export default function App() {
                     </div>
 
                     {/* Results Card */}
-                    <div className="mt-2 bg-slate-50 border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] rounded-3xl p-6 space-y-5">
+                    <div className="mt-0 bg-slate-50 border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] rounded-3xl p-5 space-y-4">
                       {(() => {
                         const mau = currentProject?.costStructure?.targetMau ?? 100000;
                         const convRate = currentProject?.costStructure?.paidConversionRate ?? 3;
