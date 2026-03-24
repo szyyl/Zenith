@@ -1185,7 +1185,7 @@ export default function App() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-12 border-t border-slate-100/60 relative">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-8 border-t border-slate-100/60 relative">
                       <div className="absolute -top-3 left-0 bg-white px-3 text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">
                         执行指标 / Execution Metrics
                       </div>
@@ -1217,7 +1217,7 @@ export default function App() {
                       />
 
                       {/* 营销花费模块 / Marketing Spend */}
-                      <div className="md:col-span-2 pt-2 mb-6">
+                      <div className="md:col-span-2 pt-2 mb-2">
                         {(() => {
                           const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
                           const contentCost = currentProject?.gtmStrategy.contentMarketing?.unitCost || 0;
@@ -1344,7 +1344,7 @@ export default function App() {
                         })()}
                       </div>
                       
-                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 mt-2">
                         <GtmMetricInput 
                           label="推荐与裂变 (Referral)" 
                           description="通过系统 APP 跳转了多少次"
@@ -1371,7 +1371,7 @@ export default function App() {
                       </div>
 
                       {/* 获取用户转换 / User Acquisition & Conversion */}
-                      <div className="md:col-span-2 mt-10">
+                      <div className="md:col-span-2 mt-6">
                         {(() => {
                           const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
                           const adsVol = currentProject?.gtmStrategy.paidAds?.volume || 0;
@@ -1577,7 +1577,7 @@ export default function App() {
                     </div>
 
                     {/* Results Card */}
-                    <div className="mt-6 bg-slate-50 border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] rounded-3xl p-6 space-y-5">
+                    <div className="mt-2 bg-slate-50 border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] rounded-3xl p-6 space-y-5">
                       {(() => {
                         const mau = currentProject?.costStructure?.targetMau ?? 100000;
                         const convRate = currentProject?.costStructure?.paidConversionRate ?? 3;
