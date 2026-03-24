@@ -59,7 +59,7 @@ const BASE_PROJECT: Omit<ProductData, 'id' | 'name'> = {
     dailyFreeUses: 5,
     costPerCall: 0.01,
     targetMau: 100000,
-    paidConversionRate: 20,
+    paidConversionRate: 3,
     monthlySubscription: 19.99,
   },
   scores: {

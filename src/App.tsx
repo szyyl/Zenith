@@ -1542,14 +1542,14 @@ export default function App() {
                       <div>
                         <div className="flex justify-between text-xs font-bold text-slate-500 mb-4">
                           <span>付费转化率</span>
-                          <span className="text-emerald-500 font-sans">{currentProject?.costStructure?.paidConversionRate ?? 20}%</span>
+                          <span className="text-emerald-500 font-sans">{currentProject?.costStructure?.paidConversionRate ?? 3}%</span>
                         </div>
                         <input 
                           type="range" 
                           min="0" 
                           max="50" 
                           step="1" 
-                          value={currentProject?.costStructure?.paidConversionRate ?? 20}
+                          value={currentProject?.costStructure?.paidConversionRate ?? 3}
                           onChange={e => updateCurrentProject({ costStructure: { ...currentProject!.costStructure, paidConversionRate: parseInt(e.target.value) } as any })}
                           className="w-full accent-emerald-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                         />
@@ -1580,7 +1580,7 @@ export default function App() {
                     <div className="mt-6 bg-slate-50 border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] rounded-3xl p-6 space-y-5">
                       {(() => {
                         const mau = currentProject?.costStructure?.targetMau ?? 100000;
-                        const convRate = currentProject?.costStructure?.paidConversionRate ?? 20;
+                        const convRate = currentProject?.costStructure?.paidConversionRate ?? 3;
                         const subPrice = currentProject?.costStructure?.monthlySubscription ?? 19.99;
                         const freeUses = currentProject?.costStructure?.dailyFreeUses ?? 5;
                         const costPerCall = currentProject?.costStructure?.costPerCall !== undefined ? currentProject.costStructure.costPerCall : 0.01;
@@ -1624,114 +1624,12 @@ export default function App() {
                         );
                       })()}
                       
-                      {/* Growth Assumptions Panel */}
-                      <div className="pt-12 border-t border-slate-100/60 relative mt-8">
-                        <div className="absolute -top-3 left-0 bg-white px-3 text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">
-                          转化与模型假设 / Growth Assumptions
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                            {/* Retention Rate */}
-                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">首月留存率 (Retention)</label>
-                              <div className="flex items-center gap-2">
-                                <input 
-                                  type="number" 
-                                  value={currentProject?.gtmStrategy.retentionRate || 0}
-                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, retentionRate: parseInt(e.target.value) || 0 } })}
-                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
-                                />
-                                <span className="text-xs text-slate-400 font-bold">%</span>
-                              </div>
-                            </div>
-                            
-                            {/* Content Cost */}
-                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">内容成本 (Unit Cost)</label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-400 font-bold">$</span>
-                                <input 
-                                  type="number" 
-                                  value={currentProject?.gtmStrategy.contentMarketing?.unitCost || 5000}
-                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, contentMarketing: { ...currentProject!.gtmStrategy.contentMarketing, unitCost: parseInt(e.target.value) || 0 } } })}
-                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Paid Ads Unit Cost */}
-                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">广告单价 (Ads Unit Cost)</label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-400 font-bold">$</span>
-                                <input 
-                                  type="number" 
-                                  value={currentProject?.gtmStrategy.paidAds?.unitCost || 100}
-                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: { ...currentProject!.gtmStrategy.paidAds, unitCost: parseInt(e.target.value) || 0 } } })}
-                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Paid Ads CVR */}
-                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">广告转化率 (Ads CVR)</label>
-                              <div className="flex items-center gap-2">
-                                <input 
-                                  type="number" 
-                                  value={currentProject?.gtmStrategy.paidAds?.cvr || 0}
-                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, paidAds: { ...currentProject!.gtmStrategy.paidAds, cvr: parseInt(e.target.value) || 0 } } })}
-                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
-                                />
-                                <span className="text-xs text-slate-400 font-bold">%</span>
-                              </div>
-                            </div>
-
-                            {/* Viral K-Factor */}
-                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">病毒系数 (K-Factor)</label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-400 font-bold">K=</span>
-                                <input 
-                                  type="number" 
-                                  step="0.1"
-                                  value={currentProject?.gtmStrategy.viral?.kFactor || 0}
-                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, viral: { ...currentProject!.gtmStrategy.viral, kFactor: parseFloat(e.target.value) || 0 } } })}
-                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
-                                />
-                              </div>
-                            </div>
-                            
-                            {/* Referral CVR */}
-                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">裂变转化率 (Ref. CVR)</label>
-                              <div className="flex items-center gap-2">
-                                <input 
-                                  type="number" 
-                                  value={currentProject?.gtmStrategy.referral?.cvr || 0}
-                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, referral: { ...currentProject!.gtmStrategy.referral, cvr: parseInt(e.target.value) || 0 } } })}
-                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
-                                />
-                                <span className="text-xs text-slate-400 font-bold">%</span>
-                              </div>
-                            </div>
-
-                            {/* SEO Cost */}
-                            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500">搜索单点成本 (SEO Cost)</label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-400 font-bold">$</span>
-                                <input 
-                                  type="number" 
-                                  value={currentProject?.gtmStrategy.seoAso?.unitCost || 0}
-                                  onChange={e => updateCurrentProject({ gtmStrategy: { ...currentProject!.gtmStrategy, seoAso: { ...currentProject!.gtmStrategy.seoAso, unitCost: parseInt(e.target.value) || 0 } } })}
-                                  className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 outline-none focus:border-zenith-accent/50"
-                                />
-                              </div>
-                            </div>
-                        </div>
-                      </div>
+                      {/* Growth Assumptions Panel - Temporarily removed for logic re-evaluation */}
                     </div>
                   </div>
+
+
+
 
                   {/* Row 2: Mix & Insights */}
                   <div {...getPanelProps("gtm-mix", "lg:col-span-7 glass-panel p-8 space-y-6 border-slate-200 bg-white h-full")}>
