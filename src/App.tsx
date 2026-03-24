@@ -1640,7 +1640,7 @@ export default function App() {
                 </div>
 
                 {/* GTM 操盘计划总结 / Operations Summary */}
-                <div className="glass-panel p-6 border-slate-200 bg-white mt-6">
+                <div className="glass-panel p-4 border-slate-200 bg-white mt-6">
                   {(() => {
                     // === Gather all GTM data ===
                     const contentVol = currentProject?.gtmStrategy.contentMarketing?.volume || 0;
@@ -1700,105 +1700,106 @@ export default function App() {
                     return (
                       <>
                         {/* Header */}
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-                              <BarChart3 size={16} className="text-white" />
+                            <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shadow-md">
+                              <BarChart3 size={14} className="text-white" />
                             </div>
                             <div>
-                              <h3 className="text-sm font-bold text-slate-900">GTM 操盘计划总结</h3>
-                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Operations Plan Summary → Sandbox Input</p>
+                              <h3 className="text-xs font-bold text-slate-900">GTM 操盘计划总结</h3>
+                              <p className="text-[9px] text-slate-400 uppercase tracking-wider">Operations Summary → Sandbox Input</p>
                             </div>
                           </div>
-                          <div className="px-3 py-1 bg-violet-50 border border-violet-100 rounded-full">
-                            <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wider">📊 数据将送往沙盘推演</span>
+                          <div className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-full flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">数据将送往沙盘推演</span>
                           </div>
                         </div>
 
                         {/* 3-Column Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
                           {/* Left: Radar Chart */}
-                          <div className="lg:col-span-3 bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">渠道投入雷达图</p>
-                            <div className="h-[180px]">
+                          <div className="lg:col-span-3 bg-slate-50/50 border border-slate-100/60 rounded-xl p-3 flex flex-col justify-center">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center">渠道投入雷达图</p>
+                            <div className="h-[120px] mt-1">
                               <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
-                                  <PolarGrid stroke="#e2e8f0" />
-                                  <PolarAngleAxis dataKey="channel" tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} />
-                                  <Radar name="投入" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} strokeWidth={2} />
-                                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px' }} />
+                                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="80%">
+                                  <PolarGrid stroke="#f1f5f9" />
+                                  <PolarAngleAxis dataKey="channel" tick={{ fontSize: 9, fill: '#64748b' }} />
+                                  <Radar name="投入" dataKey="value" stroke="#334155" fill="#334155" fillOpacity={0.1} strokeWidth={1.5} />
+                                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '10px', padding: '4px 8px' }} />
                                 </RadarChart>
                               </ResponsiveContainer>
                             </div>
                           </div>
 
                           {/* Center: KPI Cards */}
-                          <div className="lg:col-span-5 grid grid-cols-2 gap-3">
+                          <div className="lg:col-span-5 grid grid-cols-2 gap-3 items-center">
                             {/* Total Acquisition */}
-                            <div className="p-4 bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-2xl">
-                              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">月新增获客</p>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-2xl font-sans font-bold text-indigo-600">{formatNum(totalNewUsers)}</span>
-                                <span className="text-[10px] text-indigo-400">/月</span>
+                            <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">月新增获客</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-sans font-bold text-indigo-600">{formatNum(totalNewUsers)}</span>
+                                <span className="text-[9px] text-slate-400">/月</span>
                               </div>
-                              <div className="mt-2 flex items-center gap-2 text-[9px] text-slate-400">
+                              <div className="mt-1 flex items-center gap-1.5 text-[8px] text-slate-400 uppercase tracking-tighter">
                                 <span>直接 {formatNum(directInstalls)}</span>
-                                <span className="text-indigo-300">|</span>
+                                <span className="text-slate-300">|</span>
                                 <span>裂变 {formatNum(viralInstalls)}</span>
                               </div>
                             </div>
 
                             {/* Estimated MAU */}
-                            <div className="p-4 bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-2xl">
-                              <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">预估月活 MAU</p>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-2xl font-sans font-bold text-emerald-600">{formatNum(estMau)}</span>
-                                <span className="text-[10px] text-emerald-400">用户</span>
+                            <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">预估月活 MAU</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-sans font-bold text-emerald-600">{formatNum(estMau)}</span>
+                                <span className="text-[9px] text-slate-400">用户</span>
                               </div>
-                              <div className="mt-2 text-[9px] text-slate-400">
+                              <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
                                 付费转化 {convRate}% → {formatNum(Math.floor(estMau * convRate / 100))} 付费用户
                               </div>
                             </div>
 
                             {/* Marketing Spend */}
-                            <div className="p-4 bg-gradient-to-br from-amber-50 to-white border border-amber-100 rounded-2xl">
-                              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">营销总花费</p>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-2xl font-sans font-bold text-amber-600">{formatUSD(marketingSpend)}</span>
-                                <span className="text-[10px] text-amber-400">/月</span>
+                            <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">营销总花费</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-sans font-bold text-amber-500">{formatUSD(marketingSpend)}</span>
+                                <span className="text-[9px] text-slate-400">/月</span>
                               </div>
-                              <div className="mt-2 text-[9px] text-slate-400">
+                              <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
                                 CAC ≈ {totalNewUsers > 0 ? '$' + (marketingSpend / totalNewUsers).toFixed(2) : 'N/A'}
                               </div>
                             </div>
 
                             {/* Operating Margin */}
-                            <div className={`p-4 bg-gradient-to-br rounded-2xl border ${profit >= 0 ? 'from-emerald-50 to-white border-emerald-100' : 'from-rose-50 to-white border-rose-100'}`}>
-                              <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>预估运营毛利</p>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className={`text-2xl font-sans font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatUSD(profit)}</span>
-                                <span className={`text-[10px] ${profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>/月</span>
+                            <div className="p-3 bg-slate-50/50 hover:bg-white transition-colors border border-slate-100/60 rounded-xl">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">预估运营毛利</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className={`text-xl font-sans font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatUSD(profit)}</span>
+                                <span className="text-[9px] text-slate-400">/月</span>
                               </div>
-                              <div className="mt-2 text-[9px] text-slate-400">
+                              <div className="mt-1 text-[8px] text-slate-400 uppercase tracking-tighter">
                                 利润率 {revenue > 0 ? (profit / revenue * 100).toFixed(1) : '0'}%
                               </div>
                             </div>
                           </div>
 
                           {/* Right: Bar Chart */}
-                          <div className="lg:col-span-4 bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">收支结构对比</p>
-                            <div className="h-[180px]">
+                          <div className="lg:col-span-4 bg-slate-50/50 border border-slate-100/60 rounded-xl p-3 flex flex-col justify-center">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center">收支结构对比</p>
+                            <div className="h-[120px] mt-1">
                               <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={barData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-                                  <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
-                                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#475569', fontWeight: 600 }} width={60} />
+                                <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
+                                  <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v: number) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
+                                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#64748b' }} width={50} />
                                   <Tooltip
-                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px' }}
+                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '10px', padding: '4px 8px' }}
                                     formatter={(value: number) => [formatUSD(value), '']}
                                   />
-                                  <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={20}>
+                                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12}>
                                     {barData.map((entry, index) => (
                                       <Cell key={`cell-${index}`} fill={entry.fill} />
                                     ))}
@@ -1808,12 +1809,6 @@ export default function App() {
                             </div>
                           </div>
 
-                        </div>
-
-                        {/* Footer note */}
-                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                          <p className="text-[10px] text-slate-400 font-medium">以上数据将作为沙盘推演的初始输入参数</p>
                         </div>
                       </>
                     );
