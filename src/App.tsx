@@ -35,6 +35,7 @@ import type {AppState, ProductData, SimulationResult} from './types';
 import {
   analyzeAssetFromFileWithMode,
   analyzeAssetFromLinkWithMode,
+  analyzeScenarioInputs,
   generateStrategyResponse,
   generateSimulationScenarios,
   runSandboxSimulation,
@@ -108,6 +109,9 @@ export default function App() {
     isSimulating: false,
     activeModule: 'sandbox',
     activeSubModule: 'sandbox-engine',
+    simulationDifficulty: 'Normal',
+    recommendedScenarioCategory: '',
+    scenarioModelMode: 'fast',
   });
 
   const currentProject = state.projects.find(p => p.id === state.currentProjectId) || state.projects[0];
@@ -368,20 +372,34 @@ export default function App() {
 
   const handleGenerateScenarios = async () => {
     await runWithSimulationState(async () => {
-      const newScenarios = await generateSimulationScenarios(currentProject, modelMode);
+      // Step 1: Analyze inputs
+      const analysis = await analyzeScenarioInputs(currentProject, modelMode);
+      setState(prev => ({ ...prev, analysisResult: analysis }));
+
+      // Step 2: Generate scenarios
+      const { scenarios, recommendedCategory } = await generateSimulationScenarios(
+        currentProject, 
+        state.scenarioModelMode || modelMode
+      );
       setState(prev => ({
         ...prev,
-        scenarios: newScenarios,
+        scenarios,
+        recommendedScenarioCategory: recommendedCategory
       }));
     }, 'Scenario generation failed:');
   };
 
   const runSimulation = async (scenario: string) => {
     await runWithSimulationState(async () => {
-      const resultText = await runSandboxSimulation(scenario, currentProject, modelMode);
+      const result = await runSandboxSimulation(
+        scenario, 
+        currentProject, 
+        modelMode,
+        state.simulationDifficulty || 'Normal'
+      );
       
       // Extract recommendations from AI response
-      const recMatches = resultText?.match(/(?:建议|对策|措施)[：:]\s*([\s\S]*?)(?:\n\n|$)/gi) || [];
+      const recMatches = result?.match(/(?:建议|对策|措施)[：:]\s*([\s\S]*?)(?:\n\n|$)/gi) || [];
       const recommendations = recMatches.length > 0 
         ? recMatches[0].split(/\d+[.、]/).filter(Boolean).map(s => s.trim()).slice(0, 3)
         : ["优化获客成本结构", "提升用户留存率至 40%+", "建立竞品监控体系"];
@@ -585,7 +603,7 @@ export default function App() {
                       Strategic Simulation Engine
                     </div>
                     <h2 className="text-4xl font-sans font-bold tracking-tight text-slate-900">动态沙盘推演</h2>
-                    <p className="text-slate-500 max-w-lg text-sm">基于灵感实验室与 GTM 布局数据，AI 将为您推演多条可能的增长路径并识别核心难题。</p>
+                    <p className="text-slate-500 text-sm whitespace-nowrap overflow-hidden text-ellipsis">基于灵感实验室与 GTM 布局数据，AI 将为您推演多条可能的增长路径并识别核心难题。</p>
                   </div>
                   
                   {state.scenarios.length > 0 && (
@@ -603,7 +621,7 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     {
-                      title: '输入解析',
+                      title: '解析结果',
                       subtitle: 'Assets Ingestion',
                       strategy: assetAnalysisStrategy,
                       accentClass: 'from-emerald-50 to-white border-emerald-100',
@@ -639,20 +657,110 @@ export default function App() {
                       </div>
 
                       <div className="mt-4 space-y-3">
-                        <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
-                          <span className="text-slate-400 font-bold">Provider</span>
-                          <span className="text-slate-700 font-bold">{strategy.provider}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
-                          <span className="text-slate-400 font-bold">Mode</span>
-                          <span className="text-slate-700 font-bold">{strategy.effectiveMode}</span>
-                        </div>
-                        <div className="pt-2 border-t border-slate-100/80">
-                          <p className="text-xs font-bold text-slate-900">{strategy.displayName}</p>
-                          <p className="text-[10px] text-slate-500 mt-1 font-mono break-all">
-                            {strategy.modelId}
-                          </p>
-                        </div>
+                        {title === '解析结果' ? (
+                          <div className="space-y-3">
+                            {state.analysisResult ? (
+                              <div className="pt-2 border-t border-slate-100/80">
+                                <p className="text-[10px] text-slate-600 leading-relaxed line-clamp-6 italic">
+                                  {state.analysisResult}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="pt-2 border-t border-slate-100/80">
+                                <p className="text-[10px] text-slate-400 italic">
+                                  等待系统对资产和现状进行解析...
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ) : title === '剧本生成' ? (
+                          <div className="space-y-4">
+                            {state.recommendedScenarioCategory ? (
+                              <div className="pt-2 border-t border-slate-100/80">
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">AI 推荐分类 / Recommended Category</span>
+                                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                    <span className="text-[10px] font-bold tracking-wide uppercase italic">{state.recommendedScenarioCategory}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="pt-2 border-t border-slate-100/80">
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">AI 推荐分类 / Recommended Category</span>
+                                  <div className="px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-slate-400">
+                                    <span className="text-[10px] font-bold italic">等待推演分类...</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="pt-2 border-t border-slate-100/80 flex flex-col gap-3">
+                              <div className="flex flex-col gap-1.5">
+                                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">推演模型 / Model Mode</span>
+                                <div className="flex p-0.5 bg-slate-100 rounded-lg">
+                                  {(['fast', 'reasoning'] as const).map((m) => (
+                                    <button
+                                      key={m}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setState(prev => ({ ...prev, scenarioModelMode: m }));
+                                      }}
+                                      className={`flex-1 py-1 px-2 rounded-md text-[9px] font-bold transition-all ${state.scenarioModelMode === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                      {m === 'fast' ? '⚡ 快速' : '🧠 深度'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : title === '深度推演' ? (
+                          <div className="space-y-4">
+                            <div className="pt-2 border-t border-slate-100/80 flex flex-col gap-3">
+                              <div className="flex flex-col gap-1.5">
+                                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">难度等级 / Difficulty</span>
+                                <div className="flex p-0.5 bg-slate-100 rounded-lg">
+                                  {(['Easy', 'Normal', 'Hard'] as const).map((d) => (
+                                    <button
+                                      key={d}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setState(prev => ({ ...prev, simulationDifficulty: d }));
+                                      }}
+                                      className={`flex-1 py-1 px-2 rounded-md text-[9px] font-bold transition-all ${state.simulationDifficulty === d ? 'bg-white text-rose-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                      {d === 'Easy' ? '简单' : d === 'Normal' ? '普通' : '噩梦'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-between text-[10px] uppercase tracking-wider mt-1">
+                                <span className="text-slate-400 font-bold">Default Provider</span>
+                                <span className="text-slate-700 font-bold">{strategy.provider}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
+                              <span className="text-slate-400 font-bold">Provider</span>
+                              <span className="text-slate-700 font-bold">{strategy.provider}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
+                              <span className="text-slate-400 font-bold">Mode</span>
+                              <span className="text-slate-700 font-bold">{strategy.effectiveMode}</span>
+                            </div>
+                            <div className="pt-2 border-t border-slate-100/80">
+                              <p className="text-xs font-bold text-slate-900">{strategy.displayName}</p>
+                              <p className="text-[10px] text-slate-500 mt-1 font-mono break-all">
+                                {strategy.modelId}
+                              </p>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}

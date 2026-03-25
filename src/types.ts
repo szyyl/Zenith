@@ -1,3 +1,5 @@
+import type { ModelMode } from './modelStrategy';
+
 export interface ProductData {
   id: string;
   name: string;
@@ -63,6 +65,10 @@ export interface AppState {
   currentProjectId: string;
   simulations: SimulationResult[];
   scenarios: SimulationScenario[];
+  analysisResult?: string;
+  simulationDifficulty?: 'Easy' | 'Normal' | 'Hard';
+  recommendedScenarioCategory?: string;
+  scenarioModelMode?: ModelMode;
   activeModule: 'input' | 'gtm' | 'advisor' | 'sandbox' | 'monitoring' | 'diagnostics' | 'generator';
   activeSubModule?: string;
   isSimulating: boolean;
