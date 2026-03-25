@@ -33,13 +33,16 @@ import {
 import {AnimatePresence, motion} from 'motion/react';
 import type {AppState, ProductData, SimulationResult} from './types';
 import {
-  analyzeAssetFromFile,
-  analyzeAssetFromLink,
+  analyzeAssetFromFileWithMode,
+  analyzeAssetFromLinkWithMode,
   generateStrategyResponse,
-  type ModelMode,
   generateSimulationScenarios,
   runSandboxSimulation,
 } from './services/geminiService';
+import {
+  resolveModelStrategy,
+  type ModelMode,
+} from './modelStrategy';
 import ReactMarkdown from 'react-markdown';
 import {
   Area,
@@ -261,7 +264,7 @@ export default function App() {
   const handleLinkSubmit = async () => {
     if (!linkInput) return;
     await runAssetAnalysis(
-      () => analyzeAssetFromLink(linkInput),
+      () => analyzeAssetFromLinkWithMode(linkInput, modelMode),
       'Link analysis failed:',
       '分析失败，请检查链接或稍后重试',
       () => setLinkInput(''),
@@ -278,7 +281,7 @@ export default function App() {
     if (!file) return;
 
     await runAssetAnalysis(
-      () => analyzeAssetFromFile(file),
+      () => analyzeAssetFromFileWithMode(file, modelMode),
       'File analysis failed:',
       '文件分析失败，请稍后重试',
     );
@@ -332,6 +335,9 @@ export default function App() {
   }, [state.activeSubModule, state.activeModule]);
 
   const [modelMode, setModelMode] = useState<ModelMode>('fast');
+  const assetAnalysisStrategy = resolveModelStrategy('asset-analysis', modelMode);
+  const sandboxScenarioStrategy = resolveModelStrategy('sandbox-scenario', modelMode);
+  const sandboxSimulationStrategy = resolveModelStrategy('sandbox-simulation', modelMode);
   const [advisorChat, setAdvisorChat] = useState<{role: string, content: string}[]>([]);
   const [chatInput, setChatInput] = useState("");
 
@@ -362,7 +368,7 @@ export default function App() {
 
   const handleGenerateScenarios = async () => {
     await runWithSimulationState(async () => {
-      const newScenarios = await generateSimulationScenarios(currentProject);
+      const newScenarios = await generateSimulationScenarios(currentProject, modelMode);
       setState(prev => ({
         ...prev,
         scenarios: newScenarios,
@@ -372,7 +378,7 @@ export default function App() {
 
   const runSimulation = async (scenario: string) => {
     await runWithSimulationState(async () => {
-      const resultText = await runSandboxSimulation(scenario, currentProject);
+      const resultText = await runSandboxSimulation(scenario, currentProject, modelMode);
       
       // Extract recommendations from AI response
       const recMatches = resultText?.match(/(?:建议|对策|措施)[：:]\s*([\s\S]*?)(?:\n\n|$)/gi) || [];
@@ -592,6 +598,64 @@ export default function App() {
                       重新生成剧本
                     </button>
                   )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    {
+                      title: '输入解析',
+                      subtitle: 'Assets Ingestion',
+                      strategy: assetAnalysisStrategy,
+                      accentClass: 'from-emerald-50 to-white border-emerald-100',
+                      dotClass: 'bg-emerald-500',
+                    },
+                    {
+                      title: '剧本生成',
+                      subtitle: 'Scenario Planning',
+                      strategy: sandboxScenarioStrategy,
+                      accentClass: 'from-indigo-50 to-white border-indigo-100',
+                      dotClass: 'bg-indigo-500',
+                    },
+                    {
+                      title: '深度推演',
+                      subtitle: 'Simulation Engine',
+                      strategy: sandboxSimulationStrategy,
+                      accentClass: 'from-rose-50 to-white border-rose-100',
+                      dotClass: 'bg-rose-500',
+                    },
+                  ].map(({title, subtitle, strategy, accentClass, dotClass}) => (
+                    <div
+                      key={title}
+                      className={`rounded-3xl border bg-gradient-to-br ${accentClass} p-5 shadow-sm`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-slate-400">
+                            {subtitle}
+                          </p>
+                          <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+                        </div>
+                        <div className={`w-2.5 h-2.5 rounded-full ${dotClass}`} />
+                      </div>
+
+                      <div className="mt-4 space-y-3">
+                        <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
+                          <span className="text-slate-400 font-bold">Provider</span>
+                          <span className="text-slate-700 font-bold">{strategy.provider}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
+                          <span className="text-slate-400 font-bold">Mode</span>
+                          <span className="text-slate-700 font-bold">{strategy.effectiveMode}</span>
+                        </div>
+                        <div className="pt-2 border-t border-slate-100/80">
+                          <p className="text-xs font-bold text-slate-900">{strategy.displayName}</p>
+                          <p className="text-[10px] text-slate-500 mt-1 font-mono break-all">
+                            {strategy.modelId}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 {state.scenarios.length === 0 ? (

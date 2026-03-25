@@ -1,16 +1,6 @@
-import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-
-const apiKey = process.env.GEMINI_API_KEY || "UNCONFIGURED_API_KEY";
-const ai = new GoogleGenAI({ apiKey });
-
-export type ModelMode = 'fast' | 'reasoning' | 'creative' | 'long-context';
-
-export const MODEL_MAP: Record<ModelMode, string> = {
-  'fast': 'gemini-2.0-flash',
-  'reasoning': 'gemini-2.5-pro-preview-05-06',
-  'creative': 'gemini-2.0-flash', // Flash is actually quite creative and fast
-  'long-context': 'gemini-2.5-pro-preview-05-06',
-};
+import {Type} from '@google/genai';
+import {generateWithModelStrategy} from '../modelRuntime';
+import type {ModelMode, ModelTask} from '../modelStrategy';
 
 const projectSchema = {
   type: Type.OBJECT,
@@ -32,25 +22,38 @@ const projectSchema = {
 };
 
 export async function analyzeAssetFromLink(url: string) {
+  return analyzeAssetFromLinkWithMode(url, 'fast');
+}
+
+export async function analyzeAssetFromLinkWithMode(
+  url: string,
+  selectedMode: ModelMode = 'fast',
+) {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+    const response = await generateWithModelStrategy({
+      task: 'asset-analysis',
+      selectedMode,
       contents: `Extract the product information from the following URL and fill in the required fields: ${url}`,
-      config: {
-        tools: [{ urlContext: {} }],
-        responseMimeType: "application/json",
-        responseSchema: projectSchema
-      }
+      tools: [{ urlContext: {} }],
+      responseMimeType: 'application/json',
+      responseSchema: projectSchema,
     });
     
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(response.text || '{}');
   } catch (error) {
-    console.error("Error analyzing link:", error);
+    console.error('Error analyzing link:', error);
     throw error;
   }
 }
 
 export async function analyzeAssetFromFile(file: File) {
+  return analyzeAssetFromFileWithMode(file, 'fast');
+}
+
+export async function analyzeAssetFromFileWithMode(
+  file: File,
+  selectedMode: ModelMode = 'fast',
+) {
   try {
     const base64Data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -71,8 +74,9 @@ export async function analyzeAssetFromFile(file: File) {
       else mimeType = 'text/plain';
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+    const response = await generateWithModelStrategy({
+      task: 'asset-analysis',
+      selectedMode,
       contents: [
         {
           inlineData: {
@@ -82,37 +86,53 @@ export async function analyzeAssetFromFile(file: File) {
         },
         "Extract the product information from the provided document and fill in the required fields."
       ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: projectSchema
-      }
+      responseMimeType: 'application/json',
+      responseSchema: projectSchema,
     });
     
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(response.text || '{}');
   } catch (error) {
-    console.error("Error analyzing file:", error);
+    console.error('Error analyzing file:', error);
     throw error;
   }
 }
 
-export async function generateStrategyResponse(prompt: string, mode: ModelMode = 'fast', systemInstruction?: string) {
+async function generateTaskResponse(
+  prompt: string,
+  selectedMode: ModelMode,
+  task: ModelTask,
+  systemInstruction?: string,
+) {
   try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: MODEL_MAP[mode],
+    const response = await generateWithModelStrategy({
+      task,
+      selectedMode,
       contents: prompt,
-      config: {
-        systemInstruction: systemInstruction || "你是 Product-Zenith AI，世界级的产品策略专家。请提供结构化、有见地且数据驱动的建议。",
-        temperature: mode === 'creative' ? 0.8 : 0.2,
-      },
+      systemInstruction:
+        systemInstruction ||
+        '你是 Product-Zenith AI，世界级的产品策略专家。请提供结构化、有见地且数据驱动的建议。',
+      temperature: selectedMode === 'creative' ? 0.8 : 0.2,
     });
     return response.text;
   } catch (error) {
-    console.error("AI Generation Error:", error);
-    return "生成响应时出错。请检查你的网络连接。";
+    console.error('AI Generation Error:', error);
+    return '生成响应时出错。请检查你的网络连接。';
   }
 }
 
-export async function generateSimulationScenarios(productData: any) {
+export async function generateStrategyResponse(
+  prompt: string,
+  mode: ModelMode = 'fast',
+  systemInstruction?: string,
+  task: ModelTask = 'advisor-chat',
+) {
+  return generateTaskResponse(prompt, mode, task, systemInstruction);
+}
+
+export async function generateSimulationScenarios(
+  productData: any,
+  selectedMode: ModelMode = 'fast',
+) {
   const prompt = `
     作为世界级战略预测专家，分析以下产品及其 GTM 策略，并识别 3-4 个可能的增长剧本或挑战。
     产品数据: ${JSON.stringify(productData)}
@@ -125,19 +145,23 @@ export async function generateSimulationScenarios(productData: any) {
     - difficulty: 使用者将面临的核心难题 (遇到的难题)
   `;
   
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+  const response = await generateWithModelStrategy({
+    task: 'sandbox-scenario',
+    selectedMode,
     contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      systemInstruction: "你是一个专业的博弈论专家和产品经理。请提供具有挑战性、现实性且逻辑严密的场景。"
-    }
+    responseMimeType: 'application/json',
+    systemInstruction:
+      '你是一个专业的博弈论专家和产品经理。请提供具有挑战性、现实性且逻辑严密的场景。',
   });
 
-  return JSON.parse(response.text || "[]");
+  return JSON.parse(response.text || '[]');
 }
 
-export async function runSandboxSimulation(scenario: string, productData: any) {
+export async function runSandboxSimulation(
+  scenario: string,
+  productData: any,
+  selectedMode: ModelMode = 'reasoning',
+) {
   const prompt = `
     针对以下产品数据运行深度沙盘模拟：
     产品数据: ${JSON.stringify(productData)}
@@ -152,5 +176,10 @@ export async function runSandboxSimulation(scenario: string, productData: any) {
     请以精炼、专业且利于阅读的格式返回。
   `;
   
-  return generateStrategyResponse(prompt, 'reasoning', "你是一个沙盘模拟引擎。请基于数据事实驱动，保持批判性，并给出清晰的博弈结论。");
+  return generateStrategyResponse(
+    prompt,
+    selectedMode,
+    "你是一个沙盘模拟引擎。请基于数据事实驱动，保持批判性，并给出清晰的博弈结论。",
+    'sandbox-simulation',
+  );
 }

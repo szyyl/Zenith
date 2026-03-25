@@ -8,7 +8,10 @@ import {
   Target,
 } from 'lucide-react';
 import type {LucideIcon} from 'lucide-react';
-import type {ModelMode} from './services/geminiService';
+import {
+  buildUiModelOption,
+  type ModelMode,
+} from './modelStrategy';
 import type {AppState, ProductData} from './types';
 
 export interface SidebarSubItem {
@@ -158,18 +161,8 @@ export const TARGET_MARKET_COUNTRIES = [
 ];
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  {
-    mode: 'fast',
-    label: '⚡ 快速模式',
-    description: 'Gemini 2.0 Flash · 低延迟响应',
-    displayName: 'Gemini 2.0 Flash',
-  },
-  {
-    mode: 'reasoning',
-    label: '🧠 深度推理',
-    description: 'Gemini 2.5 Pro · 复杂逻辑分析',
-    displayName: 'Gemini 2.5 Pro',
-  },
+  buildUiModelOption('fast'),
+  buildUiModelOption('reasoning'),
 ];
 
 export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
