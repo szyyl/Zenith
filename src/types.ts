@@ -68,7 +68,7 @@ export interface AppState {
   analysisResult?: string;
   simulationDifficulty?: 'Easy' | 'Normal' | 'Hard';
   recommendedScenarioCategory?: string;
-  scenarioModelMode?: ModelMode;
+
   activeModule: 'input' | 'gtm' | 'advisor' | 'sandbox' | 'monitoring' | 'diagnostics' | 'generator';
   activeSubModule?: string;
   isSimulating: boolean;

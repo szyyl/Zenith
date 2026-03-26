@@ -193,9 +193,9 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     label: '动态沙盘推演',
     icon: ShieldAlert,
     subItems: [
-      {id: 'sandbox-engine', label: '推演引擎'},
-      {id: 'sandbox-tuning', label: '参数调优'},
-      {id: 'sandbox-history', label: '推演历史'},
+      {id: 'sandbox-analysis', label: '解析结果'},
+      {id: 'sandbox-engine', label: '剧本生成'},
+      {id: 'sandbox-simulation', label: '深度推演'},
     ],
   },
   {

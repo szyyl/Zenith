@@ -108,10 +108,10 @@ export default function App() {
     scenarios: [],
     isSimulating: false,
     activeModule: 'sandbox',
-    activeSubModule: 'sandbox-engine',
+    activeSubModule: 'sandbox-analysis',
     simulationDifficulty: 'Normal',
     recommendedScenarioCategory: '',
-    scenarioModelMode: 'fast',
+
   });
 
   const currentProject = state.projects.find(p => p.id === state.currentProjectId) || state.projects[0];
@@ -379,7 +379,7 @@ export default function App() {
       // Step 2: Generate scenarios
       const { scenarios, recommendedCategory } = await generateSimulationScenarios(
         currentProject, 
-        state.scenarioModelMode || modelMode
+        modelMode
       );
       setState(prev => ({
         ...prev,
@@ -408,7 +408,7 @@ export default function App() {
         id: createShortId(),
         timestamp: Date.now(),
         scenario,
-        outcome: resultText || "推演完成，未获取到详细结果。",
+        outcome: result || "推演完成，未获取到详细结果。",
         risks: ["市场饱和", "高获客成本 (CAC)"],
         impact: "如果不解决，LTV 可能会下降 20%。",
         recommendations
@@ -621,6 +621,7 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     {
+                      id: 'sandbox-analysis',
                       title: '解析结果',
                       subtitle: 'Assets Ingestion',
                       strategy: assetAnalysisStrategy,
@@ -628,6 +629,7 @@ export default function App() {
                       dotClass: 'bg-emerald-500',
                     },
                     {
+                      id: 'sandbox-engine',
                       title: '剧本生成',
                       subtitle: 'Scenario Planning',
                       strategy: sandboxScenarioStrategy,
@@ -635,16 +637,17 @@ export default function App() {
                       dotClass: 'bg-indigo-500',
                     },
                     {
+                      id: 'sandbox-simulation',
                       title: '深度推演',
                       subtitle: 'Simulation Engine',
                       strategy: sandboxSimulationStrategy,
                       accentClass: 'from-rose-50 to-white border-rose-100',
                       dotClass: 'bg-rose-500',
                     },
-                  ].map(({title, subtitle, strategy, accentClass, dotClass}) => (
+                  ].map(({id, title, subtitle, strategy, accentClass, dotClass}) => (
                     <div
-                      key={title}
-                      className={`rounded-3xl border bg-gradient-to-br ${accentClass} p-5 shadow-sm`}
+                      key={id}
+                      {...getPanelProps(id, `rounded-3xl border bg-gradient-to-br ${accentClass} p-5 shadow-sm`)}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1">
@@ -657,7 +660,7 @@ export default function App() {
                       </div>
 
                       <div className="mt-4 space-y-3">
-                        {title === '解析结果' ? (
+                        {id === 'sandbox-analysis' ? (
                           <div className="space-y-3">
                             {state.analysisResult ? (
                               <div className="pt-2 border-t border-slate-100/80">
@@ -673,10 +676,10 @@ export default function App() {
                               </div>
                             )}
                           </div>
-                        ) : title === '剧本生成' ? (
+                        ) : id === 'sandbox-engine' ? (
                           <div className="space-y-4">
                             {state.recommendedScenarioCategory ? (
-                              <div className="pt-2 border-t border-slate-100/80">
+                              <div className="">
                                 <div className="flex flex-col gap-1.5">
                                   <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">AI 推荐分类 / Recommended Category</span>
                                   <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700">
@@ -686,38 +689,14 @@ export default function App() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="pt-2 border-t border-slate-100/80">
-                                <div className="flex flex-col gap-1.5">
-                                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">AI 推荐分类 / Recommended Category</span>
-                                  <div className="px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-slate-400">
-                                    <span className="text-[10px] font-bold italic">等待推演分类...</span>
-                                  </div>
+                              <div className="flex flex-col gap-1.5">
+                                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">AI 推荐分类 / Recommended Category</span>
+                                <div className="px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-slate-400">
+                                  <span className="text-[10px] font-bold italic">等待推演分类...</span>
                                 </div>
                               </div>
                             )}
 
-                            <div className="pt-2 border-t border-slate-100/80 flex flex-col gap-3">
-                              <div className="flex flex-col gap-1.5">
-                                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">推演模型 / Model Mode</span>
-                                <div className="flex p-0.5 bg-slate-100 rounded-lg">
-                                  {(['fast', 'reasoning'] as const).map((m) => (
-                                    <button
-                                      key={m}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setState(prev => ({ ...prev, scenarioModelMode: m }));
-                                      }}
-                                      className={`flex-1 py-1 px-2 rounded-md text-[9px] font-bold transition-all ${state.scenarioModelMode === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                    >
-                                      {m === 'fast' ? '⚡ 快速' : '🧠 深度'}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ) : title === '深度推演' ? (
-                          <div className="space-y-4">
                             <div className="pt-2 border-t border-slate-100/80 flex flex-col gap-3">
                               <div className="flex flex-col gap-1.5">
                                 <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">难度等级 / Difficulty</span>
@@ -736,10 +715,17 @@ export default function App() {
                                   ))}
                                 </div>
                               </div>
-                              
-                              <div className="flex items-center justify-between text-[10px] uppercase tracking-wider mt-1">
-                                <span className="text-slate-400 font-bold">Default Provider</span>
-                                <span className="text-slate-700 font-bold">{strategy.provider}</span>
+                            </div>
+                          </div>
+                        ) : id === 'sandbox-simulation' ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
+                              <span className="text-slate-400 font-bold">Default Provider</span>
+                              <span className="text-slate-700 font-bold">{strategy.provider}</span>
+                            </div>
+                            <div className="pt-2 border-t border-slate-100/80">
+                              <div className="px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-slate-400 text-center">
+                                <span className="text-[10px] font-bold italic">敬请期待 / COMING SOON</span>
                               </div>
                             </div>
                           </div>
